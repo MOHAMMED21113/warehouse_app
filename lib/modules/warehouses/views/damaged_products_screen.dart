@@ -312,7 +312,7 @@ class _DamagedProductsScreenState extends ConsumerState<DamagedProductsScreen> {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Container(padding: const EdgeInsets.all(30), decoration: BoxDecoration(gradient: RadialGradient(colors: [AppColors.success.withOpacity(0.12), AppColors.success.withOpacity(0.03)]), shape: BoxShape.circle), child: Icon(Icons.verified_rounded, size: 56, color: AppColors.success.withOpacity(0.5))),
         const SizedBox(height: 20),
-        Text(s.startDate != null ? 'لا توجد سجلات في هذا التاريخ' : 'سجل التوالف فارغ 🎉', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textMain)),
+        Text(s.startDate != null ? 'لا توجد سجلات في هذا التاريخ' : 'سجل التوالف فارغ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.textMain)),
         const SizedBox(height: 6),
         Text('لا توجد أي خسائر مسجلة حتى الآن', style: TextStyle(color: colors.textSub, fontSize: 13)),
       ]),
