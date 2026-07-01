@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "930970284046",
+    "project_id": "warehouse-79c4d",
+    "storage_bucket": "warehouse-79c4d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930970284046:android:4c092aa93042227a268c5f",
+        "android_client_info": {
+          "package_name": "com.example.warehouse_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "930970284046-q861arqlggeogkrpki06llhak84s11gf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.warehouse_app",
+            "certificate_hash": "e07472bb14059ca8f0161dbc14481728490a5958"
+          }
+        },
+        {
+          "client_id": "930970284046-hep4prq177er5812d59at1h16nh8gq5s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYA94xJuRHp-QAn25WsLcJxrnijiNkytk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "930970284046-hep4prq177er5812d59at1h16nh8gq5s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
