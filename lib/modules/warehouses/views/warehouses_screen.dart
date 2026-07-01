@@ -458,7 +458,6 @@ class _WarehousesScreenState extends ConsumerState<WarehousesScreen> with Single
               ),
             ),
           ),
-
         Expanded(
           child: asyncWarehouses.when(
             loading: () => const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary))),
