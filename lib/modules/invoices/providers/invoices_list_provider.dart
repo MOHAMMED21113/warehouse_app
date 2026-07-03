@@ -137,10 +137,31 @@ class InvoicesListNotifier extends AutoDisposeFamilyNotifier<InvoicesListState, 
     state = state.copyWith(isLoading: true, currentPage: 1, hasMore: true);
     final db = ref.read(databaseHelperProvider);
     final query = state.searchQuery.trim();
+    final startStr = state.dateRange?.start.toIso8601String();
+    final endStr = state.dateRange?.end.add(const Duration(days: 1)).toIso8601String();
+
     try {
       final invoices = _isSales
-          ? await db.getSaleInvoicesPaginated(page: 1, limit: _limit, searchQuery: query.isNotEmpty ? query : null)
-          : await db.getPurchaseInvoicesPaginated(page: 1, limit: _limit, searchQuery: query.isNotEmpty ? query : null);
+          ? await db.getSaleInvoicesPaginated(
+              page: 1,
+              limit: _limit,
+              searchQuery: query.isNotEmpty ? query : null,
+              status: state.activeFilter,
+              customerId: state.selectedPersonId,
+              startDate: startStr,
+              endDate: endStr,
+              sortMode: state.sortMode,
+            )
+          : await db.getPurchaseInvoicesPaginated(
+              page: 1,
+              limit: _limit,
+              searchQuery: query.isNotEmpty ? query : null,
+              status: state.activeFilter,
+              supplierId: state.selectedPersonId,
+              startDate: startStr,
+              endDate: endStr,
+              sortMode: state.sortMode,
+            );
 
       final persons = _isSales ? await db.getAllCustomers() : await db.getAllSuppliers();
 
@@ -159,11 +180,31 @@ class InvoicesListNotifier extends AutoDisposeFamilyNotifier<InvoicesListState, 
     final db = ref.read(databaseHelperProvider);
     final nextPage = state.currentPage + 1;
     final query = state.searchQuery.trim();
+    final startStr = state.dateRange?.start.toIso8601String();
+    final endStr = state.dateRange?.end.add(const Duration(days: 1)).toIso8601String();
 
     try {
       final newInvoices = _isSales
-          ? await db.getSaleInvoicesPaginated(page: nextPage, limit: _limit, searchQuery: query.isNotEmpty ? query : null)
-          : await db.getPurchaseInvoicesPaginated(page: nextPage, limit: _limit, searchQuery: query.isNotEmpty ? query : null);
+          ? await db.getSaleInvoicesPaginated(
+              page: nextPage,
+              limit: _limit,
+              searchQuery: query.isNotEmpty ? query : null,
+              status: state.activeFilter,
+              customerId: state.selectedPersonId,
+              startDate: startStr,
+              endDate: endStr,
+              sortMode: state.sortMode,
+            )
+          : await db.getPurchaseInvoicesPaginated(
+              page: nextPage,
+              limit: _limit,
+              searchQuery: query.isNotEmpty ? query : null,
+              status: state.activeFilter,
+              supplierId: state.selectedPersonId,
+              startDate: startStr,
+              endDate: endStr,
+              sortMode: state.sortMode,
+            );
 
       if (newInvoices.isEmpty) {
         state = state.copyWith(hasMore: false, isLoadingMore: false);
@@ -189,14 +230,8 @@ class InvoicesListNotifier extends AutoDisposeFamilyNotifier<InvoicesListState, 
     }
 
     if (!currentPayments.containsKey(invoiceId)) {
-      final personId = _isSales ? invoice['customer_id'] : invoice['supplier_id'];
-      if (personId != null) {
-        final personType = _isSales ? 'customer' : 'supplier';
-        final invoiceDate = invoice['date']?.toString() ?? invoice['created_at']?.toString() ?? '';
-        currentPayments[invoiceId] = await db.getRelatedPayments(personId, personType, invoiceDate);
-      } else {
-        currentPayments[invoiceId] = [];
-      }
+      final invoiceType = _isSales ? 'sales_invoice' : 'purchase_invoice';
+      currentPayments[invoiceId] = await db.getVouchersForInvoice(invoiceId, invoiceType);
     }
 
     state = state.copyWith(invoiceItems: currentItems, invoicePayments: currentPayments);
@@ -212,17 +247,17 @@ class InvoicesListNotifier extends AutoDisposeFamilyNotifier<InvoicesListState, 
 
   void setFilter(String filter) {
     state = state.copyWith(activeFilter: filter);
-    _applyFiltersAndCalculateStats(state.invoices);
+    loadInitialInvoices();
   }
 
   void setSortMode(String sortMode) {
     state = state.copyWith(sortMode: sortMode);
-    _applyFiltersAndCalculateStats(state.invoices);
+    loadInitialInvoices();
   }
 
   void setDateRange(DateTimeRange? range) {
     state = state.copyWith(dateRange: range, clearDateRange: range == null);
-    _applyFiltersAndCalculateStats(state.invoices);
+    loadInitialInvoices();
   }
 
   void setPersonFilter(int? personId, String? personName) {
@@ -231,7 +266,7 @@ class InvoicesListNotifier extends AutoDisposeFamilyNotifier<InvoicesListState, 
       selectedPersonName: personName,
       clearPersonFilter: personId == null,
     );
-    _applyFiltersAndCalculateStats(state.invoices);
+    loadInitialInvoices();
   }
 
   void toggleMultiSelectMode() {
@@ -272,51 +307,8 @@ class InvoicesListNotifier extends AutoDisposeFamilyNotifier<InvoicesListState, 
   }
 
   void _applyFiltersAndCalculateStats(List<Map<String, dynamic>> sourceInvoices) {
-    List<Map<String, dynamic>> result = List.from(sourceInvoices);
-    final query = state.searchQuery.trim().toLowerCase();
-
-    if (query.isNotEmpty) {
-      result = result.where((i) =>
-      (i['invoice_number'] ?? '').toString().toLowerCase().contains(query) ||
-          (i['customer_name'] ?? '').toString().toLowerCase().contains(query) ||
-          (i['supplier_name'] ?? '').toString().toLowerCase().contains(query)).toList();
-    }
-
-    if (state.selectedPersonId != null) {
-      final idField = _isSales ? 'customer_id' : 'supplier_id';
-      result = result.where((i) => i[idField] == state.selectedPersonId).toList();
-    }
-
-    switch (state.activeFilter) {
-      case 'مدفوع': result = result.where((i) => (i['payment_status'] ?? '') == 'كامل').toList(); break;
-      case 'جزئي': result = result.where((i) => (i['payment_status'] ?? '') == 'جزئي').toList(); break;
-      case 'آجل': result = result.where((i) {
-        final st = i['payment_status'] ?? '';
-        return st != 'كامل' && st != 'جزئي';
-      }).toList(); break;
-    }
-
-    if (state.dateRange != null) {
-      final range = state.dateRange!;
-      result = result.where((i) {
-        final dateStr = i['date']?.toString() ?? i['created_at']?.toString() ?? '';
-        if (dateStr.isEmpty) return false;
-        try {
-          final date = DateTime.parse(dateStr);
-          return !date.isBefore(range.start) && !date.isAfter(range.end.add(const Duration(days: 1)));
-        } catch (_) { return false; }
-      }).toList();
-    }
-
-    switch (state.sortMode) {
-      case 'الأحدث': result.sort((a, b) => (b['date'] ?? b['created_at'] ?? '').toString().compareTo((a['date'] ?? a['created_at'] ?? '').toString())); break;
-      case 'الأقدم': result.sort((a, b) => (a['date'] ?? a['created_at'] ?? '').toString().compareTo((b['date'] ?? b['created_at'] ?? '').toString())); break;
-      case 'الأعلى مبلغاً': result.sort((a, b) => ((b['total_amount'] ?? 0) as num).compareTo((a['total_amount'] ?? 0) as num)); break;
-      case 'الأقل مبلغاً': result.sort((a, b) => ((a['total_amount'] ?? 0) as num).compareTo((b['total_amount'] ?? 0) as num)); break;
-    }
-
     double total = 0, paid = 0, unpaid = 0;
-    for (var inv in result) {
+    for (var inv in sourceInvoices) {
       final amount = (inv['total_amount'] ?? 0).toDouble();
       final paidAmt = (inv['paid_amount'] ?? 0).toDouble();
       total += amount;
@@ -326,7 +318,7 @@ class InvoicesListNotifier extends AutoDisposeFamilyNotifier<InvoicesListState, 
 
     state = state.copyWith(
       invoices: sourceInvoices,
-      filteredInvoices: result,
+      filteredInvoices: sourceInvoices,
       totalAmount: total,
       paidAmount: paid,
       unpaidAmount: unpaid,

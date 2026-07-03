@@ -710,7 +710,7 @@ class _DebtorsScreenState extends ConsumerState<DebtorsScreen> {
       transitionBuilder: (_, a1, __, child) => Transform.scale(scale: Curves.easeOutBack.transform(a1.value), child: Opacity(opacity: a1.value, child: child)),
       pageBuilder: (ctx, _, __) {
         Future.delayed(const Duration(milliseconds: 2000), () {
-          if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+          if (ctx.mounted && Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
         });
         return Center(
           child: Material(

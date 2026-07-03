@@ -9,6 +9,7 @@ class ShopSettingsState {
   final String shopName;
   final String shopNameEn;
   final String shopPhone;
+  final String shopEmail;
   final String shopAddress;
   final String shopAddressEn;
   final String crNumber;
@@ -23,6 +24,7 @@ class ShopSettingsState {
     this.shopName = '',
     this.shopNameEn = '',
     this.shopPhone = '',
+    this.shopEmail = '',
     this.shopAddress = '',
     this.shopAddressEn = '',
     this.crNumber = '',
@@ -38,6 +40,7 @@ class ShopSettingsState {
     String? shopName,
     String? shopNameEn,
     String? shopPhone,
+    String? shopEmail,
     String? shopAddress,
     String? shopAddressEn,
     String? crNumber,
@@ -52,6 +55,7 @@ class ShopSettingsState {
       shopName: shopName ?? this.shopName,
       shopNameEn: shopNameEn ?? this.shopNameEn,
       shopPhone: shopPhone ?? this.shopPhone,
+      shopEmail: shopEmail ?? this.shopEmail,
       shopAddress: shopAddress ?? this.shopAddress,
       shopAddressEn: shopAddressEn ?? this.shopAddressEn,
       crNumber: crNumber ?? this.crNumber,
@@ -77,6 +81,7 @@ class ShopSettingsNotifier extends AutoDisposeAsyncNotifier<ShopSettingsState> {
       shopName: prefs.getString('shop_name') ?? '',
       shopNameEn: prefs.getString('shop_name_en') ?? '',
       shopPhone: prefs.getString('shop_phone') ?? '',
+      shopEmail: prefs.getString('shop_email') ?? '',
       shopAddress: prefs.getString('shop_address') ?? '',
       shopAddressEn: prefs.getString('shop_address_en') ?? '',
       crNumber: prefs.getString('cr_number') ?? '',
@@ -91,6 +96,7 @@ class ShopSettingsNotifier extends AutoDisposeAsyncNotifier<ShopSettingsState> {
     required String shopName,
     required String shopNameEn,
     required String shopPhone,
+    required String shopEmail,
     required String shopAddress,
     required String shopAddressEn,
     required String crNumber,
@@ -102,6 +108,7 @@ class ShopSettingsNotifier extends AutoDisposeAsyncNotifier<ShopSettingsState> {
     await prefs.setString('shop_name', shopName);
     await prefs.setString('shop_name_en', shopNameEn);
     await prefs.setString('shop_phone', shopPhone);
+    await prefs.setString('shop_email', shopEmail);
     await prefs.setString('shop_address', shopAddress);
     await prefs.setString('shop_address_en', shopAddressEn);
     await prefs.setString('cr_number', crNumber);
@@ -116,6 +123,7 @@ class ShopSettingsNotifier extends AutoDisposeAsyncNotifier<ShopSettingsState> {
       shopName: shopName,
       shopNameEn: shopNameEn,
       shopPhone: shopPhone,
+      shopEmail: shopEmail,
       shopAddress: shopAddress,
       shopAddressEn: shopAddressEn,
       crNumber: crNumber,

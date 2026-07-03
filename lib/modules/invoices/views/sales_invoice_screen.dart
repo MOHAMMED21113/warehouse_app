@@ -461,9 +461,9 @@ class _SalesInvoiceScreenState extends ConsumerState<SalesInvoiceScreen>
       await notifier.loadInitialData();
       notifier.setCustomerId(id);
 
-      _snack('✅ تم إضافة العميل بنجاح', AppColors.success);
+      _snack(' تم إضافة العميل بنجاح', AppColors.success);
     } catch (e) {
-      _snack('❌ خطأ: $e', AppColors.error);
+      _snack(' خطأ: $e', AppColors.error);
     }
   }
 
@@ -522,15 +522,15 @@ class _SalesInvoiceScreenState extends ConsumerState<SalesInvoiceScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _confirmRow('📦 المنتجات', '${state.cartItems.length} صنف', textSub,
+            _confirmRow(' المنتجات', '${state.cartItems.length} صنف', textSub,
                 textMain),
-            _confirmRow('💎 الإجمالي', '${_formatNumber(state.grandTotal)} ريال',
+            _confirmRow(' الإجمالي', '${_formatNumber(state.grandTotal)} ريال',
                 textSub, textMain, bold: true, valueColor: AppColors.primary),
             if (state.totalPaid > 0)
-              _confirmRow('💵 المدفوع', '${_formatNumber(state.totalPaid)} ريال',
+              _confirmRow(' المدفوع', '${_formatNumber(state.totalPaid)} ريال',
                   textSub, textMain, valueColor: AppColors.success),
             if (state.remainingAmount > 0)
-              _confirmRow('⏳ متبقي', '${_formatNumber(state.remainingAmount)} ريال',
+              _confirmRow(' متبقي', '${_formatNumber(state.remainingAmount)} ريال',
                   textSub, textMain, valueColor: AppColors.error),
           ],
         ),
@@ -768,13 +768,6 @@ class _SalesInvoiceScreenState extends ConsumerState<SalesInvoiceScreen>
                 ),
               );
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.assignment_return_rounded),
-            onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const ReturnsListScreen())),
           ),
         ],
         bottom: PreferredSize(
@@ -1174,26 +1167,7 @@ class _SalesInvoiceScreenState extends ConsumerState<SalesInvoiceScreen>
             ),
             const SizedBox(height: 12),
           ],
-          _dropdownField<int>(
-            bg: bg,
-            border: border,
-            fill: fill,
-            mainText: mainText,
-            subText: subText,
-            label: 'العملة',
-            value: state.selectedCurrencyId,
-            icon: Icons.currency_exchange_rounded,
-            items: state.currencies
-                .map(
-                  (c) => DropdownMenuItem<int>(
-                value: c['id'],
-                child: Text('${c['name']} (${c['symbol']})',
-                    style: TextStyle(color: mainText)),
-              ),
-            )
-                .toList(),
-            onChanged: (v) => notifier.setCurrencyId(v),
-          ),
+
         ],
       ),
     );
@@ -2093,6 +2067,7 @@ class _SalesInvoiceScreenState extends ConsumerState<SalesInvoiceScreen>
       style: TextStyle(color: mainText, fontSize: 14),
       onChanged: onChanged,
       decoration: InputDecoration(
+
         labelText: label,
         labelStyle: TextStyle(color: subText, fontSize: 12),
         hintText: hint,

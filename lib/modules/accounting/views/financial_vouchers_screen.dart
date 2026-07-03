@@ -132,29 +132,30 @@ class _FinancialVouchersScreenState
         headerSliverBuilder: (_, __) => [
           _appBar(c, expense, income, net, vouchers.length, filtered),
         ],
-        body: Column(
-          children: [
-            _tabs(c, vouchers),
-            _searchBar(c),
-            // شريط الإجراءات في وضع التحديد
-            if (_isSelectionMode) _selectionBar(c, filtered),
-            Expanded(
-              child: filtered.isEmpty
-                  ? _empty(c)
-                  : RefreshIndicator(
-                onRefresh: () => ref
-                    .read(financialVouchersProvider.notifier)
-                    .loadAllData(),
-                color: AppColors.primary,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                  physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics()),
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) => _card(c, filtered[i], state),
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _tabs(c, vouchers)),
+            SliverToBoxAdapter(child: _searchBar(c)),
+            if (_isSelectionMode)
+              SliverToBoxAdapter(child: _selectionBar(c, filtered)),
+            if (filtered.isEmpty)
+              SliverFillRemaining(hasScrollBody: false, child: _empty(c))
+            else
+              SliverFillRemaining(
+                child: RefreshIndicator(
+                  onRefresh: () => ref
+                      .read(financialVouchersProvider.notifier)
+                      .loadAllData(),
+                  color: AppColors.primary,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+                    physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics()),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) => _card(c, filtered[i], state),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -1054,7 +1055,7 @@ class _FinancialVouchersScreenState
       ),
       pageBuilder: (ctx, _, __) {
         Future.delayed(const Duration(milliseconds: 1800), () {
-          if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+          if (ctx.mounted && Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
         });
         return Center(
           child: Container(

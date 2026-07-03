@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/loan_print_service.dart';
 import '../providers/loans_provider.dart';
 
 class LoansScreen extends ConsumerStatefulWidget {
@@ -196,40 +197,7 @@ class _LoansScreenState extends ConsumerState<LoansScreen> with SingleTickerProv
   }
 
   Future<void> _printLoanVoucher(Map<String, dynamic> loan) async {
-    final pdf = pw.Document();
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Center(
-                child: pw.Text('إذن سلفة (Loan Voucher)', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Divider(),
-              pw.Text('رقم السلفة: #${loan['id']}'),
-              pw.Text('الطرف: ${loan['party_name']} (${loan['loan_type'] == 'customer' ? 'عميل' : 'مورد'})'),
-              pw.Text('المبلغ الأصلي: ${loan['amount']} ريال'),
-              pw.Text('المدفوع: ${loan['paid_amount'] ?? 0} ريال'),
-              pw.Text('الرصيد المتبقي: ${loan['remaining_balance']} ريال'),
-              pw.Text('التاريخ: ${loan['loan_date']}'),
-              if (loan['due_date'] != null) pw.Text('تاريخ الاستحقاق: ${loan['due_date']}'),
-              pw.SizedBox(height: 40),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('توقيع المستلم: .....................'),
-                  pw.Text('الختم المحاسبي: .....................'),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+    await LoanPrintService.printLoanVoucher(loan);
   }
 }
 

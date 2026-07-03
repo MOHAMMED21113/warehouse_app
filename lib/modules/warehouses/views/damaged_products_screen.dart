@@ -17,8 +17,16 @@ class DamagedProductsScreen extends ConsumerStatefulWidget {
 }
 
 class _DamagedProductsScreenState extends ConsumerState<DamagedProductsScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
   AppThemeColors get _colors =>
       AppThemeColors(isDark: ref.watch(themeModeProvider) == ThemeMode.dark);
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   String _formatDate(dynamic dateString) {
     if (dateString == null || dateString.toString().trim().isEmpty || dateString == 'غير محدد') {
@@ -221,11 +229,53 @@ class _DamagedProductsScreenState extends ConsumerState<DamagedProductsScreen> {
             physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
             slivers: [
               _buildSliverAppBar(colors, s),
+              _buildSearchBar(colors, s),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
                 sliver: s.filteredLog.isEmpty ? SliverFillRemaining(child: _buildEmptyState(colors, s)) : _buildContent(colors, s),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(AppThemeColors colors, DamagedProductsState s) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.cardBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: colors.cardBorder),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: TextField(
+            controller: _searchController,
+            style: TextStyle(color: colors.textMain, fontSize: 14),
+            onChanged: (val) {
+              ref.read(damagedProductsProvider.notifier).setSearchQuery(val);
+            },
+            decoration: InputDecoration(
+              hintText: 'بحث باسم المنتج، الباركود، السبب...',
+              hintStyle: TextStyle(color: colors.textSub, fontSize: 13),
+              prefixIcon: Icon(Icons.search_rounded, color: colors.textSub, size: 22),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.clear_rounded, color: colors.textSub, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        ref.read(damagedProductsProvider.notifier).setSearchQuery('');
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
           ),
         ),
       ),

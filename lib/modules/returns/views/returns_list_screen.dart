@@ -766,76 +766,84 @@ class _ReturnsListScreenState extends ConsumerState<ReturnsListScreen> with Sing
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)))
-          : Column(children: [
-              if (_showSearch)
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  color: dark ? AppColors.navyMedium.withValues(alpha: 0.5) : accentColor.withValues(alpha: 0.04),
-                  child: TextField(
-                    controller: _searchController,
-                    autofocus: true,
-                    style: TextStyle(color: dark ? AppColors.darkTextPrimary : const Color(0xFF1E293B), fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: isSales ? 'بحث برقم المرتجع أو اسم العميل...' : 'بحث برقم المرتجع أو اسم المورد...',
-                      hintStyle: TextStyle(color: dark ? Colors.white38 : const Color(0xFF94A3B8), fontSize: 13),
-                      prefixIcon: Icon(Icons.search_rounded, color: dark ? Colors.white38 : const Color(0xFF94A3B8), size: 20),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.clear_rounded, color: dark ? Colors.white38 : const Color(0xFF94A3B8), size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              })
-                          : null,
-                      filled: true,
-                      fillColor: dark ? AppColors.navyLight : Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cardBorder)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: accentColor, width: 1.5)),
+          : CustomScrollView(
+              slivers: [
+                if (_showSearch)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      color: dark ? AppColors.navyMedium.withValues(alpha: 0.5) : accentColor.withValues(alpha: 0.04),
+                      child: TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        style: TextStyle(color: dark ? AppColors.darkTextPrimary : const Color(0xFF1E293B), fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: isSales ? 'بحث برقم المرتجع أو اسم العميل...' : 'بحث برقم المرتجع أو اسم المورد...',
+                          hintStyle: TextStyle(color: dark ? Colors.white38 : const Color(0xFF94A3B8), fontSize: 13),
+                          prefixIcon: Icon(Icons.search_rounded, color: dark ? Colors.white38 : const Color(0xFF94A3B8), size: 20),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear_rounded, color: dark ? Colors.white38 : const Color(0xFF94A3B8), size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  })
+                              : null,
+                          filled: true,
+                          fillColor: dark ? AppColors.navyLight : Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: cardBorder)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: accentColor, width: 1.5)),
+                        ),
+                        onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+                      ),
                     ),
-                    onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+                  ),
+
+                SliverToBoxAdapter(child: _buildStatsBar(filtered, accentColor)),
+                SliverToBoxAdapter(child: _buildFilterChips(accentColor, dark)),
+
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Row(children: [
+                      Icon(Icons.receipt_long_rounded, size: 14, color: dark ? Colors.white38 : const Color(0xFF94A3B8)),
+                      const SizedBox(width: 6),
+                      Text('${filtered.length} مرتجع', style: TextStyle(fontSize: 12, color: dark ? AppColors.darkTextSecondary : const Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                      const Spacer(),
+                      Text('ترتيب: $_sortMode', style: TextStyle(fontSize: 11, color: dark ? Colors.white38 : const Color(0xFF94A3B8))),
+                    ]),
                   ),
                 ),
 
-              _buildStatsBar(filtered, accentColor),
-              _buildFilterChips(accentColor, dark),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: Row(children: [
-                  Icon(Icons.receipt_long_rounded, size: 14, color: dark ? Colors.white38 : const Color(0xFF94A3B8)),
-                  const SizedBox(width: 6),
-                  Text('${filtered.length} مرتجع', style: TextStyle(fontSize: 12, color: dark ? AppColors.darkTextSecondary : const Color(0xFF64748B), fontWeight: FontWeight.w500)),
-                  const Spacer(),
-                  Text('ترتيب: $_sortMode', style: TextStyle(fontSize: 11, color: dark ? Colors.white38 : const Color(0xFF94A3B8))),
-                ]),
-              ),
-
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _loadData,
-                  color: accentColor,
-                  backgroundColor: cardBg,
-                  child: filtered.isEmpty
-                      ? ListView(children: [
-                          Padding(padding: const EdgeInsets.all(40), child: Center(child: Column(children: [Icon(Icons.filter_list_off_rounded, size: 40, color: dark ? Colors.white38 : const Color(0xFF94A3B8)), const SizedBox(height: 10), Text('لا توجد نتائج مطابقة للفلاتر', style: TextStyle(color: dark ? AppColors.darkTextSecondary : const Color(0xFF64748B), fontWeight: FontWeight.w500))]))),
-                        ])
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            return TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: 1),
-                              duration: Duration(milliseconds: 300 + (index.clamp(0, 10) * 50)),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, value, child) => Transform.translate(offset: Offset(0, 16 * (1 - value)), child: Opacity(opacity: value, child: child)),
-                              child: _buildReturnCard(filtered[index], accentColor, dark),
-                            );
-                          },
-                        ),
-                ),
-              ),
-            ]),
+                if (filtered.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.filter_list_off_rounded, size: 40, color: dark ? Colors.white38 : const Color(0xFF94A3B8)), const SizedBox(height: 10), Text('لا توجد نتائج مطابقة للفلاتر', style: TextStyle(color: dark ? AppColors.darkTextSecondary : const Color(0xFF64748B), fontWeight: FontWeight.w500))])),
+                  )
+                else
+                  SliverFillRemaining(
+                    child: RefreshIndicator(
+                      onRefresh: _loadData,
+                      color: accentColor,
+                      backgroundColor: cardBg,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          return TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0, end: 1),
+                            duration: Duration(milliseconds: 300 + (index.clamp(0, 10) * 50)),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) => Transform.translate(offset: Offset(0, 16 * (1 - value)), child: Opacity(opacity: value, child: child)),
+                            child: _buildReturnCard(filtered[index], accentColor, dark),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
       bottomNavigationBar: _isMultiSelectMode
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

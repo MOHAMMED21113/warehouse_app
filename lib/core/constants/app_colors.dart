@@ -1,4 +1,4 @@
-// lib/core/constants/app_colors.dart
+// lib/core/constants/.dart
 // ✅ ملف واحد موحد لجميع الألوان (ثابتة + ديناميكية)
 import 'package:flutter/material.dart';
 

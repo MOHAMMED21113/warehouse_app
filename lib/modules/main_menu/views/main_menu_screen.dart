@@ -49,7 +49,6 @@ import '../../reports/views/cash_flow_screen.dart';
 import '../../reports/views/balance_sheet_screen.dart';
 import '../../inventory/views/inventory_count_screen.dart';
 import '../../settings/views/audit_log_screen.dart';
-import '../../users/views/permissions_screen.dart';
 import '../../dashboard/views/executive_dashboard_screen.dart';
 
 // 🚀 استدعاء الـ Provider الخاص بالإحصائيات
@@ -809,7 +808,6 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> with SingleTick
                   if (_hasPerm(AppPermissions.dueReminders)) _dItem(Icons.alarm_rounded, 'تذكير الديون', AppColors.warning, () => _go(const DueRemindersScreen())),
                 ]),
                 _drawerGroup('الإعدادات والأمان', Icons.settings_rounded, [
-                  _dItem(Icons.verified_user_rounded, 'إدارة الصلاحيات والأدوار', const Color(0xFF818CF8), () => _go(const PermissionsScreen())),
                   _dItem(Icons.security_rounded, 'سجل الرقابة والتدقيق (Audit Log)', const Color(0xFFEF4444), () => _go(const AuditLogScreen())),
                   if (_hasPerm(AppPermissions.users)) _dItem(Icons.group_rounded, 'المستخدمين', const Color(0xFFA78BFA), () => _go(const UsersScreen())),
                   if (_hasPerm(AppPermissions.settings)) _dItem(Icons.tune_rounded, 'الإعدادات العامة', AppColors.primary, () => _go(const SettingsScreen())),
@@ -935,14 +933,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> with SingleTick
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء', style: TextStyle(color: AppColors.primary))),
           ElevatedButton(
             onPressed: () {
-              // تصفير بيانات المستخدم
-              ref.read(currentUserProvider.notifier).state = null;
-              SharedPreferences.getInstance().then((prefs) => prefs.setBool('is_logged_in', false));
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
+              ref.read(securityProvider.notifier).logout(context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: const Text('تسجيل الخروج'),

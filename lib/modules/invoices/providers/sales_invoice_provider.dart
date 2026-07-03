@@ -353,6 +353,7 @@ class SalesInvoiceNotifier extends AutoDisposeNotifier<SalesInvoiceState> {
         subtotal: state.subtotal,
         discountAmount: state.discountAmount,
         taxAmount: state.taxAmount,
+        taxRate: state.taxRate,
         valuationMethod: valuationMethod,
       );
 

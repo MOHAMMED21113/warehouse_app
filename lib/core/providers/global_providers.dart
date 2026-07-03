@@ -34,6 +34,16 @@ import '../../domain/usecases/update_task_usecase.dart';
 import '../../data/models/user_model.dart';
 import '../utils/hash_util.dart';
 
+// استيرادات المزودين والشاشات لتسجيل الخروج
+import '../../modules/warehouses/providers/warehouses_provider.dart';
+import '../../modules/invoices/providers/invoices_list_provider.dart';
+import '../../modules/dashboard/providers/dashboard_provider.dart';
+import '../../modules/accounting/providers/financial_vouchers_provider.dart';
+import '../../modules/accounting/providers/debtors_provider.dart';
+import '../../modules/accounting/providers/creditors_provider.dart';
+import '../../modules/loans/providers/loans_provider.dart';
+import '../../modules/auth/views/login_screen.dart';
+
 // ============================================================
 //  1. Theme
 // ============================================================
@@ -227,12 +237,32 @@ class SecurityNotifier extends AsyncNotifier<SecurityState> {
     state = AsyncValue.data(state.value!.copyWith(isTransactionLockEnabled: v));
   }
 
-  Future<void> logout() async {
+  Future<void> logout([BuildContext? context]) async {
     disposeBackgroundExpiryTimer();
     NotificationService().stopPeriodicCheck();
     await lockSession();
     ref.read(currentUserProvider.notifier).state = null;
     ref.invalidate(usersProvider);
+    ref.invalidate(warehousesProvider);
+    ref.invalidate(settingsProvider);
+    ref.invalidate(customersProvider);
+    ref.invalidate(suppliersProvider);
+    ref.invalidate(invoicesListProvider);
+    ref.invalidate(loansProvider);
+    ref.invalidate(dashboardProvider);
+    ref.invalidate(financialVouchersProvider);
+    ref.invalidate(debtorsProvider);
+    ref.invalidate(creditorsProvider);
+    ref.invalidate(databaseHelperProvider);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', false);
+    if (context != null && context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 }
 

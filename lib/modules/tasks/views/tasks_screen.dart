@@ -987,7 +987,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
       ),
       pageBuilder: (ctx, _, __) {
         Timer(const Duration(milliseconds: 1800), () {
-          if (Navigator.of(ctx).canPop()) {
+          if (ctx.mounted && Navigator.of(ctx).canPop()) {
             Navigator.of(ctx).pop();
           }
         });

@@ -22,6 +22,7 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
   final _nameController = TextEditingController();
   final _nameEnController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _addressController = TextEditingController();
   final _addressEnController = TextEditingController();
   final _crNumberController = TextEditingController();
@@ -46,6 +47,7 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
         _nameController.text = state.shopName;
         _nameEnController.text = state.shopNameEn;
         _phoneController.text = state.shopPhone;
+        _emailController.text = state.shopEmail;
         _addressController.text = state.shopAddress;
         _addressEnController.text = state.shopAddressEn;
         _crNumberController.text = state.crNumber;
@@ -61,6 +63,7 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
     _nameController.dispose();
     _nameEnController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     _addressController.dispose();
     _addressEnController.dispose();
     _crNumberController.dispose();
@@ -78,6 +81,7 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
         shopName: _nameController.text.trim(),
         shopNameEn: _nameEnController.text.trim(),
         shopPhone: _phoneController.text.trim(),
+        shopEmail: _emailController.text.trim(),
         shopAddress: _addressController.text.trim(),
         shopAddressEn: _addressEnController.text.trim(),
         crNumber: _crNumberController.text.trim(),
@@ -172,6 +176,7 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
         _nameController.text = state.shopName;
         _nameEnController.text = state.shopNameEn;
         _phoneController.text = state.shopPhone;
+        _emailController.text = state.shopEmail;
         _addressController.text = state.shopAddress;
         _addressEnController.text = state.shopAddressEn;
         _crNumberController.text = state.crNumber;
@@ -371,6 +376,19 @@ class _ShopSettingsScreenState extends ConsumerState<ShopSettingsScreen> {
                       decoration: _inputDecoration(
                         'أرقام الجوال (مثال: 05000 / 05555)',
                         Icons.phone_rounded,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // البريد الإلكتروني
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: TextStyle(color: colors.textMain, fontSize: 14),
+                      textDirection: TextDirection.ltr,
+                      decoration: _inputDecoration(
+                        'البريد الإلكتروني (Email)',
+                        Icons.email_rounded,
                       ),
                     ),
                     const SizedBox(height: 16),

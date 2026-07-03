@@ -1,4 +1,5 @@
 // lib/database/database_helper.dart
+import 'dart:convert';
 import 'package:flutter/foundation.dart'; // 🎯 استخدام foundation بدلاً من material للحفاظ على Clean Architecture
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -35,7 +36,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 7, // 🚀 إصدار 7: إضافة نظام السلف، الأرقام التسلسلية، سجل التدقيق، والمشتريات المتقدمة
+      version: 8, // 🚀 إصدار 8: ربط السندات المالية بالفواتير مباشرة ودعم الخصم والضريبة والمتبقي
       onConfigure: (db) async {
         if (!isRestoring) {
           await db.execute('PRAGMA foreign_keys = ON'); // تفعيل القيود الصارمة
@@ -44,6 +45,9 @@ class DatabaseHelper {
         }
       },
       onCreate: _createTables,
+      onOpen: (db) async {
+        await ensureAllIndexesCreated(db);
+      },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           try {
@@ -110,21 +114,6 @@ class DatabaseHelper {
                 last_updated TEXT DEFAULT CURRENT_TIMESTAMP
               )
             ''');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_products_expiry ON products(expiry_date)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_products_stock ON products(current_stock)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_invoices_date ON sales_invoices(date)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_invoices_customer ON sales_invoices(customer_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_items_invoice ON sales_items(invoice_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_items_product ON sales_items(product_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_invoices_date ON purchase_invoices(date)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_invoices_supplier ON purchase_invoices(supplier_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_invoice ON purchase_items(invoice_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name)');
           } catch (e) {
             debugPrint('⚠️ Error during migration to v6: $e');
           }
@@ -150,9 +139,6 @@ class DatabaseHelper {
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
               )
             ''');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_party ON loans(party_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_due_date ON loans(due_date)');
 
             await db.execute('''
               CREATE TABLE IF NOT EXISTS product_serial_numbers (
@@ -164,8 +150,6 @@ class DatabaseHelper {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
               )
             ''');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_serials_product ON product_serial_numbers(product_id)');
-            await db.execute('CREATE INDEX IF NOT EXISTS idx_serials_number ON product_serial_numbers(serial_number)');
 
             await db.execute('''
               CREATE TABLE IF NOT EXISTS audit_log (
@@ -221,8 +205,77 @@ class DatabaseHelper {
             debugPrint('⚠️ Error during migration to v7: $e');
           }
         }
+        if (oldVersion < 8) {
+          try {
+            await db.execute('ALTER TABLE financial_vouchers ADD COLUMN invoice_id INTEGER');
+            await db.execute('ALTER TABLE financial_vouchers ADD COLUMN invoice_type TEXT');
+            await db.execute('ALTER TABLE sales_invoices ADD COLUMN discount REAL DEFAULT 0');
+            await db.execute('ALTER TABLE sales_invoices ADD COLUMN tax REAL DEFAULT 0');
+          } catch (e) {
+            debugPrint('⚠️ Error during migration to v8: $e');
+          }
+        }
+        await ensureAllIndexesCreated(db);
       },
     );
+  }
+
+  Future<int> getDefaultTreasuryId([DatabaseExecutor? executor]) async {
+    final db = executor ?? await database;
+    final res = await db.query('treasuries', orderBy: 'id ASC', limit: 1);
+    if (res.isNotEmpty && res.first['id'] != null) {
+      return (res.first['id'] as num).toInt();
+    }
+    return 1;
+  }
+
+  Future<void> ensureAllIndexesCreated(DatabaseExecutor db) async {
+    try {
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(subcategory_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_products_expiry ON products(expiry_date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_products_stock ON products(current_stock)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_batches_product ON purchase_batches(product_id, purchase_date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_ledger_reference_entry ON account_ledger(reference_number, entry_type)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_invoices_date ON sales_invoices(date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_invoices_customer ON sales_invoices(customer_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_items_invoice ON sales_items(invoice_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_items_product ON sales_items(product_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_invoices_date ON purchase_invoices(date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_invoices_supplier ON purchase_invoices(supplier_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_invoice ON purchase_items(invoice_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_party ON loans(party_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_due_date ON loans(due_date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_serials_product ON product_serial_numbers(product_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_serials_number ON product_serial_numbers(serial_number)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_table ON audit_log(table_name)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_prod_batches_prod ON product_batches(product_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_inv_adj_prod ON inventory_adjustments(product_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_category ON financial_vouchers(category_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_treasury ON financial_vouchers(treasury_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_date ON financial_vouchers(date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_type ON financial_vouchers(type)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_treasury_tx_treasury ON treasury_transactions(treasury_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_treasury_tx_ref ON treasury_transactions(reference_type, reference_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_movements_prod ON stock_movements(product_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_movements_ref ON stock_movements(type, reference_id)');
+      try { await db.execute('ALTER TABLE financial_vouchers ADD COLUMN invoice_id INTEGER'); } catch (_) {}
+      try { await db.execute('ALTER TABLE financial_vouchers ADD COLUMN invoice_type TEXT'); } catch (_) {}
+      try { await db.execute('ALTER TABLE sales_invoices ADD COLUMN discount REAL DEFAULT 0'); } catch (_) {}
+      try { await db.execute('ALTER TABLE sales_invoices ADD COLUMN tax REAL DEFAULT 0'); } catch (_) {}
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_invoice ON financial_vouchers(invoice_id, invoice_type)');
+    } catch (e) {
+      debugPrint('⚠️ Error during index creation: $e');
+    }
   }
 
   // 🎯 2. بناء الهيكل الكامل بجميع الأعمدة والقيود في دفعة واحدة
@@ -507,7 +560,9 @@ class DatabaseHelper {
         payment_status TEXT DEFAULT 'كامل', 
         paid_amount REAL DEFAULT 0, 
         subtotal REAL DEFAULT 0, 
+        discount REAL DEFAULT 0,
         discount_amount REAL DEFAULT 0, 
+        tax REAL DEFAULT 0,
         tax_rate REAL DEFAULT 0, 
         tax_amount REAL DEFAULT 0, 
         total_amount REAL DEFAULT 0, 
@@ -648,6 +703,8 @@ class DatabaseHelper {
         amount REAL NOT NULL, 
         date TEXT NOT NULL, 
         notes TEXT, 
+        invoice_id INTEGER,
+        invoice_type TEXT,
         FOREIGN KEY (category_id) REFERENCES financial_categories (id) ON DELETE RESTRICT, 
         FOREIGN KEY (treasury_id) REFERENCES treasuries (id) ON DELETE RESTRICT
       )
@@ -911,6 +968,7 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_prod_batches_prod ON product_batches(product_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_inv_adj_prod ON inventory_adjustments(product_id)');
+    await ensureAllIndexesCreated(db);
 
     // ================== 9. إدخال البيانات الافتراضية (Seeding) ==================
 
@@ -1381,6 +1439,13 @@ class DatabaseHelper {
         'warehouse_id': warehouseId,
         'quantity': newStock,
       });
+      await logAuditAction(
+        txn: txn,
+        action: 'INSERT',
+        tableName: 'products',
+        recordId: productId,
+        newValue: jsonEncode(product),
+      );
     });
     await updateDashboardSummary();
     return productId;
@@ -1415,6 +1480,13 @@ class DatabaseHelper {
           });
         }
       }
+      await logAuditAction(
+        txn: txn,
+        action: 'UPDATE',
+        tableName: 'products',
+        recordId: id,
+        newValue: jsonEncode(data),
+      );
     });
     await updateDashboardSummary();
     return id;
@@ -1425,6 +1497,11 @@ class DatabaseHelper {
       'products',
       where: 'id = ?',
       whereArgs: [id],
+    );
+    await logAuditAction(
+      action: 'DELETE',
+      tableName: 'products',
+      recordId: id,
     );
     await updateDashboardSummary();
     return res;
@@ -1914,6 +1991,7 @@ class DatabaseHelper {
     required String? notes,
     required List<Map<String, dynamic>> items,
     int warehouseId = 1,
+    int? treasuryId,
   }) async {
     final db = await database;
     Map<String, dynamic> result = {
@@ -1924,6 +2002,7 @@ class DatabaseHelper {
     };
     try {
       await db.transaction((txn) async {
+        final actualTreasuryId = treasuryId ?? await getDefaultTreasuryId(txn);
         final invoiceNumber = await _generateInvoiceNumber(txn, 'PO');
         final date = DateTime.now().toIso8601String();
         double totalAmount = 0;
@@ -1931,7 +2010,11 @@ class DatabaseHelper {
           totalAmount += item['quantity'] * item['unitCost'];
         }
         totalAmount = _round(totalAmount);
-        final roundedPaid = _round(paidAmount);
+        double roundedPaid = _round(paidAmount);
+        if ((paymentType == 'نقدي' || paymentStatus == 'كامل') && roundedPaid == 0 && totalAmount > 0) {
+          roundedPaid = totalAmount;
+        }
+
         String? supplierName;
         final supplierResult = await txn.rawQuery(
           'SELECT name FROM suppliers WHERE id = ?',
@@ -1953,9 +2036,25 @@ class DatabaseHelper {
           'warehouse_id': warehouseId,
         });
         if (roundedPaid > 0) {
+          final voucherNum = await _generateInvoiceNumber(txn, 'PAY');
+          final catRes = await txn.query('financial_categories', where: "name = ? OR id = 4", whereArgs: ['مشتريات وبضاعة'], limit: 1);
+          int catId = 4;
+          if (catRes.isNotEmpty) catId = (catRes.first['id'] as num).toInt();
+
+          await txn.insert('financial_vouchers', {
+            'voucher_number': voucherNum,
+            'category_id': catId,
+            'treasury_id': actualTreasuryId,
+            'type': 'payment',
+            'amount': roundedPaid,
+            'date': date,
+            'notes': 'سند صرف نقدي لمورد عن فاتورة شراء رقم $invoiceNumber',
+            'invoice_id': invoiceId,
+            'invoice_type': 'purchase_invoice',
+          });
           await _addToTreasuryLogic(
             txn,
-            treasuryId: 1,
+            treasuryId: actualTreasuryId,
             transactionType: 'out',
             amount: roundedPaid,
             referenceType: 'purchase_invoice',
@@ -2037,6 +2136,13 @@ class DatabaseHelper {
             'invoice_id': invoiceId,
           });
         }
+        await logAuditAction(
+          txn: txn,
+          action: 'INSERT',
+          tableName: 'purchase_invoices',
+          recordId: invoiceId,
+          newValue: jsonEncode({'invoiceNumber': invoiceNumber, 'total': totalAmount, 'supplierId': supplierId}),
+        );
         result = {
           'success': true,
           'invoiceId': invoiceId,
@@ -2068,8 +2174,10 @@ class DatabaseHelper {
     double? subtotal,
     double? discountAmount,
     double? taxAmount,
+    double? taxRate,
     String valuationMethod = 'WAC',
     int warehouseId = 1,
+    int? treasuryId,
   }) async {
     final db = await database;
     Map<String, dynamic> result = {
@@ -2081,10 +2189,10 @@ class DatabaseHelper {
 
     try {
       await db.transaction((txn) async {
+        final actualTreasuryId = treasuryId ?? await getDefaultTreasuryId(txn);
         // 1. التحقق من توفر الكميات قبل فعل أي شيء
         for (final item in items) {
           final productId = item['productId'];
-          // حماية ضد القيم المفقودة (Null) وتحويلها بشكل آمن
           final requiredQty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
           final available =
               await _getStockInWarehouse(txn, productId, warehouseId);
@@ -2109,10 +2217,15 @@ class DatabaseHelper {
         }
 
         finalTotal = _round(finalTotal);
-        final roundedPaid = _round(paidAmount);
+        double roundedPaid = _round(paidAmount);
+        if ((paymentStatus == 'كامل') && roundedPaid == 0 && finalTotal > 0) {
+          roundedPaid = finalTotal;
+        }
+
         final roundedSubtotal = _round(subtotal ?? 0.0);
         final roundedDiscount = _round(discountAmount ?? 0.0);
         final roundedTax = _round(taxAmount ?? 0.0);
+        final computedTaxRate = taxRate ?? (roundedTax > 0 && (roundedSubtotal - roundedDiscount) > 0 ? _round((roundedTax / (roundedSubtotal - roundedDiscount)) * 100) : 0.0);
 
         // 4. إنشاء الفاتورة في جدول sales_invoices
         final invoiceId = await txn.insert('sales_invoices', {
@@ -2125,19 +2238,38 @@ class DatabaseHelper {
           'paid_amount': roundedPaid,
           'total_amount': finalTotal,
           'subtotal': roundedSubtotal,
+          'discount': roundedDiscount,
           'discount_amount': roundedDiscount,
+          'tax': roundedTax,
           'tax_amount': roundedTax,
+          'tax_rate': computedTaxRate,
           'due_date': dueDate,
           'notes': notes,
           'date': date,
           'warehouse_id': warehouseId,
         });
 
-        // 5. تسجيل الدفعة في الخزينة إذا كان هناك دفع نقدي
+        // 5. تسجيل الدفعة في الخزينة وإضافة سند قبض تلقائي إذا كان هناك دفع نقدي
         if (roundedPaid > 0) {
+          final voucherNum = await _generateInvoiceNumber(txn, 'REC');
+          final catRes = await txn.query('financial_categories', where: "name = ? OR id = 5", whereArgs: ['مبيعات وبضاعة'], limit: 1);
+          int catId = 5;
+          if (catRes.isNotEmpty) catId = (catRes.first['id'] as num).toInt();
+
+          await txn.insert('financial_vouchers', {
+            'voucher_number': voucherNum,
+            'category_id': catId,
+            'treasury_id': actualTreasuryId,
+            'type': 'receipt',
+            'amount': roundedPaid,
+            'date': date,
+            'notes': 'سند قبض نقدي عن فاتورة مبيعات رقم $invoiceNumber',
+            'invoice_id': invoiceId,
+            'invoice_type': 'sales_invoice',
+          });
           await _addToTreasuryLogic(
             txn,
-            treasuryId: 1,
+            treasuryId: actualTreasuryId,
             transactionType: 'in',
             amount: roundedPaid,
             referenceType: 'sales_invoice',
@@ -2253,6 +2385,14 @@ class DatabaseHelper {
           }
         }
 
+        await logAuditAction(
+          txn: txn,
+          action: 'INSERT',
+          tableName: 'sales_invoices',
+          recordId: invoiceId,
+          newValue: jsonEncode({'invoiceNumber': invoiceNumber, 'total': finalTotal, 'customerId': customerId}),
+        );
+
         // إعداد النتيجة النهائية للنجاح
         result = {
           'success': true,
@@ -2261,7 +2401,7 @@ class DatabaseHelper {
         };
       });
     } catch (e) {
-      print('❌ خطأ تفصيلي أثناء حفظ الفاتورة: $e');
+      print(' خطأ تفصيلي أثناء حفظ الفاتورة: $e');
       result['error'] = e.toString().replaceAll('Exception: ', '');
     }
     if (result['success'] == true) {
@@ -2306,6 +2446,7 @@ class DatabaseHelper {
     required String personName,
     String referenceNumber = '',
     String notes = '',
+    int? treasuryId,
   }) async {
     final db = await database;
     final result = {
@@ -2314,6 +2455,7 @@ class DatabaseHelper {
     };
     try {
       await db.transaction((txn) async {
+        final actualTreasuryId = treasuryId ?? await getDefaultTreasuryId(txn);
         final isPayment = personType == 'supplier';
         final treasuryTransactionType = isPayment ? 'out' : 'in';
         final referenceType =
@@ -2328,7 +2470,7 @@ class DatabaseHelper {
           final treasury = await txn.query(
             'treasuries',
             where: 'id = ?',
-            whereArgs: [1],
+            whereArgs: [actualTreasuryId],
           );
           if (treasury.isEmpty) throw Exception('الخزينة غير موجودة');
           final currentBalance = (treasury.first['balance'] as num).toDouble();
@@ -2349,11 +2491,14 @@ class DatabaseHelper {
                 : 'تحصيل من العميل/المدين $personName');
 
         final voucherNumber = await _generateInvoiceNumber(txn, voucherPrefix);
+        final catRes = await txn.query('financial_categories', where: "id = ?", whereArgs: [isPayment ? 4 : 5], limit: 1);
+        int catId = isPayment ? 4 : 5;
+        if (catRes.isNotEmpty) catId = (catRes.first['id'] as num).toInt();
 
         await txn.insert('financial_vouchers', {
           'voucher_number': voucherNumber,
-          'category_id': 4,
-          'treasury_id': 1,
+          'category_id': catId,
+          'treasury_id': actualTreasuryId,
           'type': voucherType,
           'amount': roundedAmount,
           'date': DateTime.now().toIso8601String(),
@@ -2373,7 +2518,7 @@ class DatabaseHelper {
 
         await _addToTreasuryLogic(
           txn,
-          treasuryId: 1,
+          treasuryId: actualTreasuryId,
           transactionType: treasuryTransactionType,
           amount: roundedAmount,
           referenceType: referenceType,
@@ -2818,7 +2963,16 @@ class DatabaseHelper {
         .first['count'] as int);
   }
 
-  Future<List<Map<String, dynamic>>> getSaleInvoicesPaginated({required int page, int limit = 50, String? searchQuery}) async {
+  Future<List<Map<String, dynamic>>> getSaleInvoicesPaginated({
+    required int page,
+    int limit = 50,
+    String? searchQuery,
+    String? status,
+    int? customerId,
+    String? startDate,
+    String? endDate,
+    String? sortMode,
+  }) async {
     final offset = (page - 1) * limit;
     String sql = '''
     SELECT si.*, c.name as customer_name, c.phone as customer_phone, 
@@ -2827,19 +2981,66 @@ class DatabaseHelper {
     LEFT JOIN customers c ON si.customer_id = c.id 
     LEFT JOIN account_ledger al ON al.reference_number = si.invoice_number AND al.entry_type = 'invoice'
     ''';
+    List<String> conditions = [];
     List<dynamic> args = [];
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      sql += ' WHERE si.invoice_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?';
-      final q = '%$searchQuery%';
-      args = [q, q, q];
+
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      conditions.add('(si.invoice_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)');
+      final q = '%${searchQuery.trim()}%';
+      args.addAll([q, q, q]);
     }
-    sql += ' ORDER BY si.date DESC LIMIT $limit OFFSET $offset';
+
+    if (customerId != null) {
+      conditions.add('si.customer_id = ?');
+      args.add(customerId);
+    }
+
+    if (status != null && status != 'الكل') {
+      if (status == 'مدفوع' || status == 'كامل') {
+        conditions.add("si.payment_status = 'كامل'");
+      } else if (status == 'جزئي') {
+        conditions.add("si.payment_status = 'جزئي'");
+      } else if (status == 'آجل') {
+        conditions.add("si.payment_status != 'كامل' AND si.payment_status != 'جزئي'");
+      }
+    }
+
+    if (startDate != null && startDate.isNotEmpty) {
+      conditions.add('si.date >= ?');
+      args.add(startDate);
+    }
+    if (endDate != null && endDate.isNotEmpty) {
+      conditions.add('si.date <= ?');
+      args.add(endDate);
+    }
+
+    if (conditions.isNotEmpty) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    String orderBy = 'si.date DESC';
+    if (sortMode == 'الأقدم') orderBy = 'si.date ASC';
+    else if (sortMode == 'الأعلى مبلغاً') orderBy = 'si.total_amount DESC';
+    else if (sortMode == 'الأقل مبلغاً') orderBy = 'si.total_amount ASC';
+
+    sql += ' ORDER BY $orderBy LIMIT $limit OFFSET $offset';
     return await (await database).rawQuery(sql, args);
-  }  Future<int> getSaleInvoicesCount() async => ((await (await database)
+  }
+
+  Future<int> getSaleInvoicesCount() async => ((await (await database)
           .rawQuery('SELECT COUNT(*) as count FROM sales_invoices'))
       .first['count'] as int);
 
-  Future<List<Map<String, dynamic>>> getPurchaseInvoicesPaginated({required int page, int limit = 100, String? searchQuery}) async {
+  Future<List<Map<String, dynamic>>> getPurchaseInvoicesPaginated({
+    required int page,
+    int limit = 100,
+    String? searchQuery,
+    String? status,
+    int? supplierId,
+    String? startDate,
+    String? endDate,
+    String? sortMode,
+  }) async {
     final offset = (page - 1) * limit;
     String sql = '''
     SELECT pi.*, s.name as supplier_name, s.phone as supplier_phone, 
@@ -2848,13 +3049,49 @@ class DatabaseHelper {
     LEFT JOIN suppliers s ON pi.supplier_id = s.id 
     LEFT JOIN account_ledger al ON al.reference_number = pi.invoice_number AND al.entry_type = 'invoice'
     ''';
+    List<String> conditions = [];
     List<dynamic> args = [];
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      sql += ' WHERE pi.invoice_number LIKE ? OR s.name LIKE ? OR s.phone LIKE ?';
-      final q = '%$searchQuery%';
-      args = [q, q, q];
+
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      conditions.add('(pi.invoice_number LIKE ? OR s.name LIKE ? OR s.phone LIKE ?)');
+      final q = '%${searchQuery.trim()}%';
+      args.addAll([q, q, q]);
     }
-    sql += ' ORDER BY pi.date DESC LIMIT $limit OFFSET $offset';
+
+    if (supplierId != null) {
+      conditions.add('pi.supplier_id = ?');
+      args.add(supplierId);
+    }
+
+    if (status != null && status != 'الكل') {
+      if (status == 'مدفوع' || status == 'كامل') {
+        conditions.add("pi.payment_status = 'كامل'");
+      } else if (status == 'جزئي') {
+        conditions.add("pi.payment_status = 'جزئي'");
+      } else if (status == 'آجل') {
+        conditions.add("pi.payment_status != 'كامل' AND pi.payment_status != 'جزئي'");
+      }
+    }
+
+    if (startDate != null && startDate.isNotEmpty) {
+      conditions.add('pi.date >= ?');
+      args.add(startDate);
+    }
+    if (endDate != null && endDate.isNotEmpty) {
+      conditions.add('pi.date <= ?');
+      args.add(endDate);
+    }
+
+    if (conditions.isNotEmpty) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    String orderBy = 'pi.date DESC';
+    if (sortMode == 'الأقدم') orderBy = 'pi.date ASC';
+    else if (sortMode == 'الأعلى مبلغاً') orderBy = 'pi.total_amount DESC';
+    else if (sortMode == 'الأقل مبلغاً') orderBy = 'pi.total_amount ASC';
+
+    sql += ' ORDER BY $orderBy LIMIT $limit OFFSET $offset';
     return await (await database).rawQuery(sql, args);
   }
   Future<int> getPurchaseInvoicesCount() async => ((await (await database)
@@ -3405,31 +3642,37 @@ class DatabaseHelper {
     required double amount,
     String notes = '',
     String? referenceNumber,
+    int? invoiceId,
+    String? invoiceType,
   }) async {
     final db = await database;
     Map<String, dynamic> result = {'success': false, 'error': null};
     try {
       await db.transaction((txn) async {
+        final actualTreasuryId = treasuryId > 0 ? treasuryId : await getDefaultTreasuryId(txn);
+        final roundedAmount = _round(amount);
         final prefix = type == 'payment' ? 'PAY' : 'REC';
         final voucherNumber = referenceNumber ?? await _generateInvoiceNumber(txn, prefix);
         final date = DateTime.now().toIso8601String();
         final voucherId = await txn.insert('financial_vouchers', {
           'voucher_number': voucherNumber,
           'category_id': categoryId,
-          'treasury_id': treasuryId,
+          'treasury_id': actualTreasuryId,
           'type': type,
-          'amount': amount,
+          'amount': roundedAmount,
           'date': date,
           'notes': notes,
+          if (invoiceId != null) 'invoice_id': invoiceId,
+          if (invoiceType != null) 'invoice_type': invoiceType,
         });
         final treasuryTransactionType = type == 'payment' ? 'out' : 'in';
         final refType =
             type == 'payment' ? 'expense_voucher' : 'income_voucher';
         await _addToTreasuryLogic(
           txn,
-          treasuryId: treasuryId,
+          treasuryId: actualTreasuryId,
           transactionType: treasuryTransactionType,
-          amount: amount,
+          amount: roundedAmount,
           referenceType: refType,
           referenceId: voucherId,
           notes:
@@ -3445,7 +3688,7 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getAllFinancialVouchers() async =>
       await (await database).rawQuery(
-          'SELECT v.*, c.name as category_name, t.name as treasury_name FROM financial_vouchers v JOIN financial_categories c ON v.category_id = c.id JOIN treasuries t ON v.treasury_id = t.id ORDER BY v.date DESC');
+          'SELECT v.*, COALESCE(c.name, "عام") as category_name, COALESCE(t.name, "الصندوق الرئيسي") as treasury_name FROM financial_vouchers v LEFT JOIN financial_categories c ON v.category_id = c.id LEFT JOIN treasuries t ON v.treasury_id = t.id ORDER BY v.date DESC');
 
   Future<double> _consumeFIFO(
       DatabaseExecutor txn, int productId, double quantity) async {
@@ -4016,6 +4259,125 @@ class DatabaseHelper {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getVouchersForInvoice(
+      int invoiceId, String invoiceType) async {
+    final dbClient = await database;
+    final bool isSale = invoiceType == 'sales_invoice' || invoiceType == 'sale';
+    final String table = isSale ? 'sales_invoices' : 'purchase_invoices';
+
+    final invRes = await dbClient.query(table, where: 'id = ?', whereArgs: [invoiceId]);
+    double totalInvoiceAmount = 0.0;
+    double invoicePaidAmount = 0.0;
+    String invoiceNumber = '';
+    String invoiceDate = '';
+    if (invRes.isNotEmpty) {
+      totalInvoiceAmount = (invRes.first['total_amount'] as num?)?.toDouble() ?? 0.0;
+      invoicePaidAmount = (invRes.first['paid_amount'] as num?)?.toDouble() ?? 0.0;
+      invoiceNumber = invRes.first['invoice_number']?.toString() ?? '';
+      invoiceDate = invRes.first['date']?.toString() ?? DateTime.now().toIso8601String();
+    }
+
+    final String targetType1 = isSale ? 'sales_invoice' : 'purchase_invoice';
+    final String targetType2 = isSale ? 'sale' : 'purchase';
+
+    List<Map<String, dynamic>> rawVouchers = await dbClient.query(
+      'financial_vouchers',
+      where:
+          '(invoice_id = ? AND (invoice_type = ? OR invoice_type = ?)) OR (invoice_id IS NULL AND notes LIKE ?)',
+      whereArgs: [
+        invoiceId,
+        targetType1,
+        targetType2,
+        '%$invoiceNumber%',
+      ],
+      orderBy: 'date ASC, id ASC',
+    );
+
+    List<Map<String, dynamic>> result = [];
+    double cumulativePaid = 0.0;
+    Set<String> addedRefs = {};
+
+    for (var v in rawVouchers) {
+      final double amt = (v['amount'] as num?)?.toDouble() ?? 0.0;
+      cumulativePaid += amt;
+      final double remainingBalance =
+          (totalInvoiceAmount - cumulativePaid).clamp(0.0, double.infinity);
+
+      final ref = v['voucher_number']?.toString() ?? '';
+      if (ref.isNotEmpty) addedRefs.add(ref);
+
+      result.add({
+        ...v,
+        'reference_number': ref,
+        'debit_amount': isSale ? 0.0 : amt,
+        'credit_amount': isSale ? amt : 0.0,
+        'remaining_balance': remainingBalance,
+      });
+    }
+
+    // دائماً نبحث في دفتر الأستاذ عن أي دفعات مرتبطة برقم الفاتورة ولم تدرج كسند منفصل
+    if (invoiceNumber.isNotEmpty) {
+      final ledgerEntries = await dbClient.query(
+        'account_ledger',
+        where: "(reference_number = ? OR notes LIKE ?) AND entry_type IN ('payment', 'receipt', 'settlement')",
+        whereArgs: [invoiceNumber, '%$invoiceNumber%'],
+        orderBy: 'date ASC, id ASC',
+      );
+      for (var l in ledgerEntries) {
+        final ref = l['reference_number']?.toString() ?? '';
+        // نتجنب تكرار قيد تم إضافته بالفعل كسند مالي
+        if (ref.isNotEmpty && addedRefs.contains(ref)) continue;
+
+        final double debit = (l['debit_amount'] as num?)?.toDouble() ?? 0.0;
+        final double credit = (l['credit_amount'] as num?)?.toDouble() ?? 0.0;
+        final double amt = isSale ? credit : debit;
+        if (amt > 0) {
+          cumulativePaid += amt;
+          if (ref.isNotEmpty) addedRefs.add(ref);
+          final double remainingBalance =
+              (totalInvoiceAmount - cumulativePaid).clamp(0.0, double.infinity);
+          result.add({
+            ...l,
+            'voucher_number': ref,
+            'reference_number': ref,
+            'amount': amt,
+            'debit_amount': debit,
+            'credit_amount': credit,
+            'remaining_balance': remainingBalance,
+          });
+        }
+      }
+    }
+
+    // إذا كان المبلغ المسدد في الفاتورة أكبر من مجموع السندات المكتشفة، نضيف دفعة سداد مباشرة عند الإنشاء
+    if (_round(invoicePaidAmount) > _round(cumulativePaid) + 0.01) {
+      final double diff = _round(invoicePaidAmount - cumulativePaid);
+      cumulativePaid += diff;
+      final double remainingBalance =
+          (totalInvoiceAmount - cumulativePaid).clamp(0.0, double.infinity);
+      result.insert(0, {
+        'id': 0,
+        'voucher_number': '$invoiceNumber-PAY',
+        'reference_number': '$invoiceNumber-PAY',
+        'date': invoiceDate,
+        'notes': 'دفعة سداد نقدية مباشرة عند الإنشاء',
+        'amount': diff,
+        'debit_amount': isSale ? 0.0 : diff,
+        'credit_amount': isSale ? diff : 0.0,
+        'remaining_balance': remainingBalance,
+      });
+      // تحديث أرصدة المتبقي التراكمي لبقية السندات إذا تمت إضافة الدفعة في البداية
+      double runningPaid = 0.0;
+      for (int i = 0; i < result.length; i++) {
+        final double amt = (result[i]['amount'] as num?)?.toDouble() ?? 0.0;
+        runningPaid += amt;
+        result[i]['remaining_balance'] = (totalInvoiceAmount - runningPaid).clamp(0.0, double.infinity);
+      }
+    }
+
+    return result;
+  }
+
   // 💡 تم إضافة 'invoice' و 'return' لتظهر القيود المدينة والدائنة بشكل متكامل
   Future<List<Map<String, dynamic>>> getRelatedPayments(
       int personId, String personType, String invoiceDate) async {
@@ -4159,13 +4521,13 @@ class DatabaseHelper {
     final db = await database;
     return await db.rawQuery('''
       SELECT d.*, 
-             p.name as product_name, p.barcode,
+             COALESCE(p.name, 'منتج غير محدد') as product_name, COALESCE(p.barcode, '') as barcode,
              IFNULL(p.expiry_date, 'غير محدد') as expiry_date, 
-             w.name as warehouse_name,
+             COALESCE(w.name, 'مستودع غير محدد') as warehouse_name,
              COALESCE(u.full_name, u.username, 'غير محدد') as moved_by_name
       FROM damaged_products d
-      JOIN products p ON d.product_id = p.id
-      JOIN warehouses w ON d.warehouse_id = w.id
+      LEFT JOIN products p ON d.product_id = p.id
+      LEFT JOIN warehouses w ON d.warehouse_id = w.id
       LEFT JOIN users u ON d.moved_by = u.id
       ORDER BY d.move_date DESC
     ''');
@@ -4338,6 +4700,8 @@ class DatabaseHelper {
           'amount': _round(amountPaid),
           'date': DateTime.now().toIso8601String(),
           'notes': 'دفعة من مهمة الفاتورة $invNum - $personName',
+          'invoice_id': invoiceId,
+          'invoice_type': invoiceType,
         });
 
         // 4. تسجيل حركة الخزينة
@@ -5023,7 +5387,7 @@ class DatabaseHelper {
     return count > 0;
   }
 
-  Future<void> recordLoanPayment(int loanId, double paymentAmount, String paymentMethod) async {
+  Future<void> recordLoanPayment(int loanId, double paymentAmount, String paymentMethod, {int? invoiceId}) async {
     final db = await database;
     await db.transaction((txn) async {
       final loanRes = await txn.query('loans', where: 'id = ?', whereArgs: [loanId]);
@@ -5137,26 +5501,64 @@ class DatabaseHelper {
 
   Future<Map<String, dynamic>> getCashFlowStatement({required String startDate, required String endDate}) async {
     final db = await database;
-    final cashSales = await db.rawQuery('''
-      SELECT COALESCE(SUM(total_amount), 0) as v FROM sales_invoices WHERE payment_status = 'مدفوع' AND substr(date, 1, 10) BETWEEN ? AND ?
+    
+    // 1. حساب التدفقات الداخلة من حركات الخزينة الفعلية والفواتير
+    final cashInRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(amount), 0) as v FROM treasury_transactions 
+      WHERE transaction_type = 'in' AND substr(date, 1, 10) BETWEEN ? AND ?
     ''', [startDate, endDate]);
-    final receipts = await db.rawQuery('''
-      SELECT COALESCE(SUM(amount), 0) as v FROM financial_vouchers WHERE type = 'receipt' AND substr(date, 1, 10) BETWEEN ? AND ?
-    ''', [startDate, endDate]);
-    final cashPurchases = await db.rawQuery('''
-      SELECT COALESCE(SUM(total_amount), 0) as v FROM purchase_invoices WHERE payment_status = 'مدفوع' AND substr(date, 1, 10) BETWEEN ? AND ?
-    ''', [startDate, endDate]);
-    final payments = await db.rawQuery('''
-      SELECT COALESCE(SUM(amount), 0) as v FROM financial_vouchers WHERE type = 'payment' AND substr(date, 1, 10) BETWEEN ? AND ?
-    ''', [startDate, endDate]);
+    double treasuryInflows = (cashInRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
-    final totalInflows = ((cashSales.first['v'] as num?)?.toDouble() ?? 0.0) + ((receipts.first['v'] as num?)?.toDouble() ?? 0.0);
-    final totalOutflows = ((cashPurchases.first['v'] as num?)?.toDouble() ?? 0.0) + ((payments.first['v'] as num?)?.toDouble() ?? 0.0);
+    final salesRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(paid_amount), 0) as v FROM sales_invoices 
+      WHERE substr(date, 1, 10) BETWEEN ? AND ?
+    ''', [startDate, endDate]);
+    double salesInflows = (salesRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    final receiptsRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(amount), 0) as v FROM financial_vouchers 
+      WHERE type = 'receipt' AND substr(date, 1, 10) BETWEEN ? AND ?
+    ''', [startDate, endDate]);
+    double voucherInflows = (receiptsRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    double totalInflows = treasuryInflows > 0 ? treasuryInflows : (salesInflows + voucherInflows);
+    if (totalInflows < (salesInflows + voucherInflows)) {
+      totalInflows = salesInflows + voucherInflows;
+    }
+
+    // 2. حساب التدفقات الخارجة
+    final cashOutRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(amount), 0) as v FROM treasury_transactions 
+      WHERE transaction_type = 'out' AND substr(date, 1, 10) BETWEEN ? AND ?
+    ''', [startDate, endDate]);
+    double treasuryOutflows = (cashOutRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    final purchasesRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(paid_amount), 0) as v FROM purchase_invoices 
+      WHERE substr(date, 1, 10) BETWEEN ? AND ?
+    ''', [startDate, endDate]);
+    double purchaseOutflows = (purchasesRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    final paymentsRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(amount), 0) as v FROM financial_vouchers 
+      WHERE type = 'payment' AND substr(date, 1, 10) BETWEEN ? AND ?
+    ''', [startDate, endDate]);
+    double voucherOutflows = (paymentsRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    double totalOutflows = treasuryOutflows > 0 ? treasuryOutflows : (purchaseOutflows + voucherOutflows);
+    if (totalOutflows < (purchaseOutflows + voucherOutflows)) {
+      totalOutflows = purchaseOutflows + voucherOutflows;
+    }
+
     final netCashFlow = totalInflows - totalOutflows;
 
     return {
       'total_inflows': totalInflows,
+      'sales_inflows': salesInflows,
+      'voucher_inflows': voucherInflows,
       'total_outflows': totalOutflows,
+      'purchase_outflows': purchaseOutflows,
+      'voucher_outflows': voucherOutflows,
       'net_cash_flow': netCashFlow,
     };
   }
@@ -5165,6 +5567,7 @@ class DatabaseHelper {
   // 🚀 الجزء الرابع: سجل التدقيق (Audit Log)
   // ==========================================
   Future<int> logAuditAction({
+    DatabaseExecutor? txn,
     int? userId,
     required String action,
     required String tableName,
@@ -5172,8 +5575,8 @@ class DatabaseHelper {
     String? oldValue,
     String? newValue,
   }) async {
-    final db = await database;
-    return await db.insert('audit_log', {
+    final executor = txn ?? await database;
+    return await executor.insert('audit_log', {
       'user_id': userId ?? 1,
       'action': action,
       'table_name': tableName,
@@ -5339,14 +5742,67 @@ class DatabaseHelper {
     return res.isNotEmpty ? res.first : null;
   }
 
-  Future<void> createInventoryAdjustment(Map<String, dynamic> adjustment) async {
+  Future<int> createInventoryAdjustment(Map<String, dynamic> adjustment) async {
     final db = await database;
+    int adjId = 0;
     await db.transaction((txn) async {
-      await txn.insert('inventory_adjustments', adjustment);
+      adjId = await txn.insert('inventory_adjustments', adjustment);
       final prodId = adjustment['product_id'] as int;
       final diff = (adjustment['difference'] as num).toDouble();
       await txn.rawUpdate('UPDATE products SET current_stock = current_stock + ? WHERE id = ?', [diff, prodId]);
+      
+      final ws = await txn.query('product_warehouse_stock', where: 'product_id = ?', whereArgs: [prodId]);
+      if (ws.isNotEmpty) {
+        await txn.rawUpdate('UPDATE product_warehouse_stock SET quantity = quantity + ? WHERE id = ?', [diff, ws.first['id']]);
+      } else {
+        final p = await txn.query('products', where: 'id = ?', whereArgs: [prodId]);
+        final wId = p.isNotEmpty && p.first['warehouse_id'] != null ? p.first['warehouse_id'] : 1;
+        final actualQty = (adjustment['actual_quantity'] as num?)?.toDouble() ?? diff;
+        await txn.insert('product_warehouse_stock', {
+          'product_id': prodId,
+          'warehouse_id': wId,
+          'quantity': actualQty,
+        });
+      }
+
+      if (diff < 0) {
+        final reasonText = (adjustment['reason'] ?? '').toString().trim().toLowerCase();
+        final isDamaged = reasonText.contains('تلف') || reasonText.contains('كسر') || 
+                          reasonText.contains('فساد') || reasonText.contains('عطل') ||
+                          reasonText.contains('تالف');
+        if (isDamaged) {
+          final pData = await txn.query('products', where: 'id = ?', whereArgs: [prodId]);
+          final double unitCost = pData.isNotEmpty && pData.first['cost_price'] != null ? (pData.first['cost_price'] as num).toDouble() : 0.0;
+          final double damagedQty = diff.abs();
+          final double totalLoss = unitCost * damagedQty;
+          final String invNo = await _generateDamagedInvoiceNumber(txn);
+          final int wId = adjustment['warehouse_id'] != null ? (adjustment['warehouse_id'] as int) : (pData.isNotEmpty && pData.first['warehouse_id'] != null ? (pData.first['warehouse_id'] as int) : 1);
+
+          await txn.insert('damaged_products', {
+            'invoice_number': invNo,
+            'product_id': prodId,
+            'warehouse_id': wId,
+            'quantity': damagedQty,
+            'unit_cost': unitCost,
+            'total_loss': totalLoss,
+            'reason': adjustment['reason'] ?? 'تلف من الجرد',
+            'status': 'تم الاعتماد (تسوية جردية)',
+            'move_date': DateTime.now().toIso8601String(),
+            'moved_by': adjustment['user_id'],
+            'notes': 'تم الرصد تلقائياً من شاشة تسوية المخزون والجرد رقم ($adjId)',
+          });
+        }
+      }
+
+      await logAuditAction(
+        txn: txn,
+        action: 'INSERT',
+        tableName: 'inventory_adjustments',
+        recordId: adjId,
+        newValue: jsonEncode(adjustment),
+      );
     });
+    return adjId;
   }
 
   Future<List<Map<String, dynamic>>> getInventoryAdjustments({String? startDate, String? endDate}) async {

@@ -17,7 +17,7 @@ class AuditLogService {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getAuditLog({String? tableName, String? user, String? startDate, String? endDate}) async {
+  Future<List<Map<String, dynamic>>> getAuditLog({String? tableName, String? action, String? user, String? startDate, String? endDate}) async {
     final db = await dbHelper.database;
     String query = "SELECT * FROM audit_log WHERE 1=1";
     List<dynamic> args = [];
@@ -25,6 +25,10 @@ class AuditLogService {
     if (tableName != null && tableName.isNotEmpty && tableName != 'all') {
       query += " AND table_name = ?";
       args.add(tableName);
+    }
+    if (action != null && action.isNotEmpty && action != 'all') {
+      query += " AND action = ?";
+      args.add(action);
     }
     if (startDate != null && startDate.isNotEmpty) {
       query += " AND substr(timestamp, 1, 10) >= ?";
@@ -37,5 +41,12 @@ class AuditLogService {
 
     query += " ORDER BY timestamp DESC LIMIT 500";
     return await db.rawQuery(query, args);
+  }
+
+  /// جلب أسماء الجداول الفريدة المسجلة في السجل
+  Future<List<String>> getUniqueTables() async {
+    final db = await dbHelper.database;
+    final res = await db.rawQuery("SELECT DISTINCT table_name FROM audit_log WHERE table_name IS NOT NULL ORDER BY table_name ASC");
+    return res.map((e) => e['table_name']?.toString() ?? '').where((s) => s.isNotEmpty).toList();
   }
 }

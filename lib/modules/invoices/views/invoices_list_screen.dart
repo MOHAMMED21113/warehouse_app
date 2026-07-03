@@ -863,84 +863,165 @@ class _InvoicesListScreenState extends ConsumerState<InvoicesListScreen> with Si
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Divider(height: 1, color: _cardBorder), const SizedBox(height: 12),
-          if (_isSales && invoice['customer_name'] != null) _buildDetailCard(icon: Icons.person_rounded, title: 'بيانات العميل', value: invoice['customer_name'].toString(), phone: invoice['customer_phone']?.toString()),
-          if (!_isSales && invoice['supplier_name'] != null) _buildDetailCard(icon: Icons.business_rounded, title: 'بيانات المورد', value: invoice['supplier_name'].toString(), phone: invoice['supplier_phone']?.toString()),
-          const SizedBox(height: 14),
-          Row(children: [Icon(Icons.inventory_2_outlined, size: 16, color: _accentColor), const SizedBox(width: 6), Expanded(child: Text('الأصناف والمنتجات (${items.length}):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textMain)))]),
-          const SizedBox(height: 8),
-
-          if (items.isEmpty)
-            Center(child: Padding(padding: const EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(_accentColor))))
-          else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Container(
-                width: 600, decoration: BoxDecoration(color: _inputFill, borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: const BoxDecoration(gradient: LinearGradient(colors: [AppColors.navy, AppColors.navyMedium]), borderRadius: BorderRadius.vertical(top: Radius.circular(11))),
-                      child: Row(children: [Expanded(flex: 3, child: Text('الصنف', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 1, child: Text('السعر', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 1, child: Text('الكمية', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 1, child: Text('بونص', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 2, child: Text('الإجمالي', textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)))]),
-                    ),
-                    ...items.map((item) {
-                      final price = ((_isSales ? item['unit_price'] : item['unit_cost']) ?? 0).toDouble();
-                      final qty = (item['quantity'] ?? 0).toInt();
-                      final isBonus = (item['is_bonus'] == 1 || item['is_bonus'] == '1');
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: _cardBorder.withOpacity(0.3)))),
-                        child: Row(children: [Expanded(flex: 3, child: Text(item['product_name']?.toString() ?? '', style: TextStyle(fontSize: 12, color: _textMain), overflow: TextOverflow.ellipsis)), Expanded(flex: 1, child: Text(_formatNumber(price), textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _textSub))), Expanded(flex: 1, child: Text('$qty', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _textSub))), Expanded(flex: 1, child: Center(child: isBonus ? const Icon(Icons.card_giftcard_rounded, color: Colors.green, size: 16) : const Text('-'))), Expanded(flex: 2, child: Text(_formatNumber(price * qty), textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _textMain)))]),
-                      );
-                    }),
-                  ],
+          // 1. معلومات أساسية وبيانات الدفع
+          _CollapsibleSection(
+            title: 'معلومات أساسية وبيانات الدفع',
+            icon: Icons.info_outline_rounded,
+            iconColor: _accentColor,
+            borderColor: _cardBorder,
+            headerBgColor: _inputFill,
+            initiallyExpanded: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_isSales && invoice['customer_name'] != null) _buildDetailCard(icon: Icons.person_rounded, title: 'بيانات العميل', value: invoice['customer_name'].toString(), phone: invoice['customer_phone']?.toString()),
+                if (!_isSales && invoice['supplier_name'] != null) _buildDetailCard(icon: Icons.business_rounded, title: 'بيانات المورد', value: invoice['supplier_name'].toString(), phone: invoice['supplier_phone']?.toString()),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
+                  child: Column(children: [
+                    _buildDetailRow('طريقة الدفع الرئيسية', invoice['payment_type']?.toString() ?? 'كاش', Icons.payment_rounded, valueColor: _accentColor),
+                    _buildDetailRow('حالة الفاتورة المحاسبية', invoice['payment_status']?.toString() ?? 'كامل', Icons.info_outline_rounded, valueColor: invoice['payment_status'] == 'كامل' ? AppColors.success : (invoice['payment_status'] == 'جزئي' ? _purchaseAccent : AppColors.error)),
+                    _buildDetailRow('إجمالي المبلغ المسدد', '${_formatNumber(paidAmount)} ﷼', Icons.check_circle_outline_rounded, valueColor: AppColors.success),
+                    if (cashAmount > 0) _buildDetailRow('المسدد نقداً (كاش)', '${_formatNumber(cashAmount)} ﷼', Icons.money_rounded, valueColor: Colors.green),
+                    if (transferAmount > 0) _buildDetailRow('المسدد عبر (حوالة)', '${_formatNumber(transferAmount)} ﷼', Icons.account_balance_rounded, valueColor: Colors.blue),
+                    if (remainingAmount > 0) _buildDetailRow('المبلغ المتبقي (آجل)', '${_formatNumber(remainingAmount)} ﷼', Icons.warning_amber_rounded, valueColor: AppColors.error),
+                  ]),
                 ),
-              ),
+              ],
             ),
-
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
-            child: Column(children: [
-              _buildDetailRow('المجموع الفرعي', _formatNumber(subtotalVal), Icons.receipt_long_outlined, valueColor: _textSub),
-              if (discountVal > 0) _buildDetailRow('الخصم', '-${_formatNumber(discountVal)}', Icons.money_off_rounded, valueColor: AppColors.error),
-              if (taxVal > 0) _buildDetailRow('الضريبة المضافة', '+${_formatNumber(taxVal)}', Icons.account_balance_outlined, valueColor: _purchaseAccent),
-              Divider(height: 16, color: AppColors.primary.withOpacity(0.3)),
-              _buildDetailRow('الإجمالي النهائي', _formatNumber(finalTotal), Icons.monetization_on_outlined, valueColor: AppColors.primary, isBold: true),
-            ]),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _inputFill, borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
-            child: Column(children: [
-              _buildDetailRow('طريقة الدفع الرئيسية', invoice['payment_type']?.toString() ?? 'كاش', Icons.payment_rounded, valueColor: _accentColor),
-              _buildDetailRow('حالة الفاتورة المحاسبية', invoice['payment_status']?.toString() ?? 'كامل', Icons.info_outline_rounded, valueColor: invoice['payment_status'] == 'كامل' ? AppColors.success : (invoice['payment_status'] == 'جزئي' ? _purchaseAccent : AppColors.error)),
-              _buildDetailRow('إجمالي المبلغ المسدد', _formatNumber(paidAmount), Icons.check_circle_outline_rounded, valueColor: AppColors.success),
-              if (cashAmount > 0) _buildDetailRow('المسدد نقداً (كاش)', _formatNumber(cashAmount), Icons.money_rounded, valueColor: Colors.green),
-              if (transferAmount > 0) _buildDetailRow('المسدد عبر (حوالة)', _formatNumber(transferAmount), Icons.account_balance_rounded, valueColor: Colors.blue),
-              if (remainingAmount > 0) _buildDetailRow('المبلغ المتبقي (آجل)', _formatNumber(remainingAmount), Icons.warning_amber_rounded, valueColor: AppColors.error),
-            ]),
           ),
 
-          if (paidAmount > 0) ...[
-            const SizedBox(height: 14),
-            Row(children: [Icon(Icons.history_edu_rounded, size: 16, color: _accentColor), const SizedBox(width: 6), Expanded(child: Text('سجل عمليات السداد والسندات المربوطة:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textMain)))]),
-            const SizedBox(height: 8),
-            if (!hasLoadedPayments) Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Row(children: [const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.success))), const SizedBox(width: 8), Expanded(child: Text('جاري تحميل تفاصيل السندات التاريخية...', style: TextStyle(fontSize: 11, color: _textHint)))])),
-            if (hasLoadedPayments && payments.isEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Text('✅ تم السداد المباشر (لا توجد سندات دفع منفصلة).', style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.bold))),
-            if (hasLoadedPayments && payments.isNotEmpty) ...payments.map((p) {
-              final isDebit = (p['debit_amount'] as num) > 0;
-              final amount = isDebit ? p['debit_amount'] : p['credit_amount'];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _dark ? AppColors.navyLight : Colors.grey.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: _cardBorder)),
-                child: Row(children: [Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), shape: BoxShape.circle), child: const Icon(Icons.receipt_rounded, size: 16, color: AppColors.success)), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('رقم المرجع: ${p['reference_number'] ?? 'غير محدد'}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _textMain)), const SizedBox(height: 2), Text('التاريخ: ${p['date'].toString().substring(0, 10)} | ${p['notes'] ?? ""}', style: TextStyle(fontSize: 10, color: _textHint))])), Text('${_formatNumber(amount)} ﷼', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.success))]),
-              );
-            }),
-          ],
+          // 2. الأصناف والمجموع
+          _CollapsibleSection(
+            title: 'الأصناف والمنتجات (${items.length})',
+            icon: Icons.inventory_2_outlined,
+            iconColor: _accentColor,
+            borderColor: _cardBorder,
+            headerBgColor: _inputFill,
+            initiallyExpanded: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (items.isEmpty)
+                  Center(child: Padding(padding: const EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(_accentColor))))
+                else
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Container(
+                      width: 600, decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: const BoxDecoration(gradient: LinearGradient(colors: [AppColors.navy, AppColors.navyMedium]), borderRadius: BorderRadius.vertical(top: Radius.circular(11))),
+                            child: Row(children: [Expanded(flex: 3, child: Text('الصنف', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 1, child: Text('السعر', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 1, child: Text('الكمية', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 1, child: Text('بونص', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))), Expanded(flex: 2, child: Text('الإجمالي', textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)))]),
+                          ),
+                          ...items.map((item) {
+                            final price = ((_isSales ? item['unit_price'] : item['unit_cost']) ?? 0).toDouble();
+                            final qty = (item['quantity'] ?? 0).toInt();
+                            final isBonus = (item['is_bonus'] == 1 || item['is_bonus'] == '1');
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: _cardBorder.withOpacity(0.3)))),
+                              child: Row(children: [Expanded(flex: 3, child: Text(item['product_name']?.toString() ?? '', style: TextStyle(fontSize: 12, color: _textMain), overflow: TextOverflow.ellipsis)), Expanded(flex: 1, child: Text(_formatNumber(price), textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _textSub))), Expanded(flex: 1, child: Text('$qty', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _textSub))), Expanded(flex: 1, child: Center(child: isBonus ? const Icon(Icons.card_giftcard_rounded, color: Colors.green, size: 16) : const Text('-'))), Expanded(flex: 2, child: Text(_formatNumber(price * qty), textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _textMain)))]),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
+                  child: Column(children: [
+                    _buildDetailRow('المجموع الفرعي', '${_formatNumber(subtotalVal)} ﷼', Icons.receipt_long_outlined, valueColor: _textSub),
+                    _buildDetailRow('الخصم', discountVal > 0 ? '-${_formatNumber(discountVal)} ﷼' : '0.00 ﷼', Icons.money_off_rounded, valueColor: discountVal > 0 ? AppColors.error : _textSub),
+                    _buildDetailRow('الضريبة المضافة', taxVal > 0 ? '+${_formatNumber(taxVal)} ﷼' : '0.00 ﷼', Icons.account_balance_outlined, valueColor: taxVal > 0 ? _purchaseAccent : _textSub),
+                    Divider(height: 16, color: AppColors.primary.withOpacity(0.3)),
+                    _buildDetailRow('الإجمالي النهائي', '${_formatNumber(finalTotal)} ﷼', Icons.monetization_on_outlined, valueColor: AppColors.primary, isBold: true),
+                  ]),
+                ),
+              ],
+            ),
+          ),
 
-          if (displayNotes.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(width: double.infinity, padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.06), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.primary.withOpacity(0.2))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('ملاحظات إضافية:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)), const SizedBox(height: 4), Text(displayNotes, style: TextStyle(fontSize: 12, color: _textMain))])),
-          ],
+          // 3. سجل السندات
+          _CollapsibleSection(
+            title: 'سجل السندات وعمليات السداد (${payments.length})',
+            icon: Icons.history_edu_rounded,
+            iconColor: _accentColor,
+            borderColor: _cardBorder,
+            headerBgColor: _inputFill,
+            initiallyExpanded: payments.isNotEmpty,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!hasLoadedPayments) Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Row(children: [const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.success))), const SizedBox(width: 8), Expanded(child: Text('جاري تحميل تفاصيل السندات التاريخية...', style: TextStyle(fontSize: 11, color: _textHint)))])),
+                if (hasLoadedPayments && payments.isEmpty) Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Text('✅ تم السداد المباشر (لا توجد سندات دفع منفصلة).', style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.bold))),
+                if (hasLoadedPayments && payments.isNotEmpty)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Container(
+                      width: 650,
+                      decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: const BoxDecoration(gradient: LinearGradient(colors: [AppColors.navy, AppColors.navyMedium]), borderRadius: BorderRadius.vertical(top: Radius.circular(11))),
+                            child: Row(
+                              children: [
+                                Expanded(flex: 2, child: Text('رقم السند', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))),
+                                Expanded(flex: 2, child: Text('التاريخ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))),
+                                Expanded(flex: 3, child: Text('البيان', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))),
+                                Expanded(flex: 2, child: Text('المبلغ المدفوع', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))),
+                                Expanded(flex: 2, child: Text('المبلغ المتبقي', textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary))),
+                              ],
+                            ),
+                          ),
+                          ...payments.map((p) {
+                            final isDebit = (p['debit_amount'] as num?) != null && (p['debit_amount'] as num) > 0;
+                            final amount = (isDebit ? p['debit_amount'] : p['credit_amount']) ?? p['amount'] ?? 0;
+                            final remBalance = (p['remaining_balance'] as num?)?.toDouble() ?? 0.0;
+                            final dateStr = p['date'] != null ? p['date'].toString().substring(0, 10) : '';
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: _cardBorder.withValues(alpha: 0.3)))),
+                              child: Row(
+                                children: [
+                                  Expanded(flex: 2, child: Text(p['reference_number']?.toString() ?? p['voucher_number']?.toString() ?? '-', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _textMain))),
+                                  Expanded(flex: 2, child: Text(dateStr, style: TextStyle(fontSize: 12, color: _textSub))),
+                                  Expanded(flex: 3, child: Text(p['notes']?.toString() ?? '', style: TextStyle(fontSize: 12, color: _textSub))),
+                                  Expanded(flex: 2, child: Text('${_formatNumber(amount)} ﷼', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.success))),
+                                  Expanded(flex: 2, child: Text('${_formatNumber(remBalance)} ﷼', textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: remBalance > 0 ? AppColors.error : AppColors.success))),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // 4. ملاحظات الفاتورة
+          _CollapsibleSection(
+            title: 'ملاحظات الفاتورة',
+            icon: Icons.notes_rounded,
+            iconColor: _accentColor,
+            borderColor: _cardBorder,
+            headerBgColor: _inputFill,
+            initiallyExpanded: displayNotes.isNotEmpty,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _cardBorder)),
+              child: Text(displayNotes.isNotEmpty ? displayNotes : 'لا توجد ملاحظات مسجلة على هذه الفاتورة.', style: TextStyle(fontSize: 12, color: displayNotes.isNotEmpty ? _textMain : _textHint)),
+            ),
+          ),
 
           const SizedBox(height: 14),
           Row(children: [
@@ -1111,6 +1192,104 @@ class _NumericDatePickerState extends State<_NumericDatePicker> {
         const Text('/', style: TextStyle(fontSize: 20, color: Colors.grey)),
         Expanded(child: CupertinoPicker(scrollController: _dayController, itemExtent: 40, selectionOverlay: CupertinoPickerDefaultSelectionOverlay(background: widget.accentColor.withOpacity(0.15)), onSelectedItemChanged: (i) { day = i + 1; _updateDate(); }, children: List.generate(_getDaysInMonth(year, month), (i) => Center(child: Text((i + 1).toString().padLeft(2, '0'), style: textStyle))))),
       ],
+    );
+  }
+}
+
+class _CollapsibleSection extends StatefulWidget {
+  final String title;
+  final IconData icon;
+  final Color iconColor;
+  final Color borderColor;
+  final Color headerBgColor;
+  final Widget child;
+  final bool initiallyExpanded;
+  final Widget? trailing;
+
+  const _CollapsibleSection({
+    Key? key,
+    required this.title,
+    required this.icon,
+    required this.iconColor,
+    required this.borderColor,
+    required this.headerBgColor,
+    required this.child,
+    this.initiallyExpanded = true,
+    this.trailing,
+  }) : super(key: key);
+
+  @override
+  State<_CollapsibleSection> createState() => _CollapsibleSectionState();
+}
+
+class _CollapsibleSectionState extends State<_CollapsibleSection> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.initiallyExpanded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: widget.headerBgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: widget.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(widget.icon, size: 18, color: widget.iconColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (widget.trailing != null) ...[
+                    widget.trailing!,
+                    const SizedBox(width: 8),
+                  ],
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: widget.child,
+            ),
+            crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+            sizeCurve: Curves.easeInOut,
+          ),
+        ],
+      ),
     );
   }
 }
