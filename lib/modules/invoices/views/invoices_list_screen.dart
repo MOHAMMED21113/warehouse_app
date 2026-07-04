@@ -361,7 +361,7 @@ class _InvoicesListScreenState extends ConsumerState<InvoicesListScreen> with Si
           paymentStatus: invoice['payment_status'] ?? 'كامل',
           paidAmount: (invoice['paid_amount'] ?? 0).toDouble(),
           items: shareItems,
-          shopName: 'المخازن الذكية',
+          shopName: 'المخازن الذكي',
           subtotal: calcSubtotal,
           discountAmount: (invoice['discount_amount'] ?? 0).toDouble(),
           taxAmount: (invoice['tax_amount'] ?? 0).toDouble(),

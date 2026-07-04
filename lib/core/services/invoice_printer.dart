@@ -1880,7 +1880,7 @@ class InvoicePrinter {
   }) async {
     if (storeName == null || storeName.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
-      storeName = prefs.getString('shop_name') ?? 'المخازن الذكية';
+      storeName = prefs.getString('shop_name') ?? 'المخازن الذكي';
       storePhone = prefs.getString('shop_phone') ?? '';
       storeAddress = prefs.getString('shop_address') ?? '';
     }
