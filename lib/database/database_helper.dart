@@ -6176,7 +6176,6 @@ class DatabaseHelper {
       'total_expenses': kpis['total_expenses'] ?? 0.0,
     };
   }
-
   Future<List<Map<String, dynamic>>> getAllProducts() async {
     return await getAllProductsWithDetails();
   }
