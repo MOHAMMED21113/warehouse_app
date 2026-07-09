@@ -5,15 +5,17 @@ import '../../../core/providers/global_providers.dart';
 
 final executiveDashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final db = ref.read(databaseHelperProvider);
-  final sales = await db.getSalesSummary();
-  final topCust = await db.getTopCustomers(5);
-  final loanStats = await db.getLoanStatistics();
-  final variance = await db.getInventoryVarianceReport();
+  final results = await Future.wait([
+    db.getSalesSummary(),
+    db.getTopCustomers(5),
+    db.getLoanStatistics(),
+    db.getInventoryVarianceReport(),
+  ]);
 
   return {
-    'sales_summary': sales,
-    'top_customers': topCust,
-    'loan_stats': loanStats,
-    'inventory_variance': variance,
+    'sales_summary': results[0],
+    'top_customers': results[1],
+    'loan_stats': results[2],
+    'inventory_variance': results[3],
   };
 });

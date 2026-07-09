@@ -476,9 +476,10 @@ class AccountStatementScreen extends ConsumerWidget {
                             InkWell(
                               onTap: () async {
                                 final db = ref.read(databaseHelperProvider);
+                                // 🔴 إصلاح: البحث بـ voucher_number أو reference_number
                                 final voucherData = await db.rawQuery(
-                                  'SELECT * FROM financial_vouchers WHERE voucher_number = ?',
-                                  [refNumber],
+                                  'SELECT * FROM financial_vouchers WHERE voucher_number = ? OR id = ?',
+                                  [refNumber, int.tryParse(refNumber) ?? -1],
                                 );
                                 if (voucherData.isNotEmpty) {
                                   await InvoicePrinter.printFinancialVoucher(
@@ -487,8 +488,8 @@ class AccountStatementScreen extends ConsumerWidget {
                                 } else {
                                   _snack(
                                     context,
-                                    'لم يتم العثور على سند بهذا الرقم',
-                                    AppColors.error,
+                                    'لا يوجد سند مالي مستقل لهذه الحركة (فاتورة أو قيد دفتري)',
+                                    AppColors.warning,
                                   );
                                 }
                               },

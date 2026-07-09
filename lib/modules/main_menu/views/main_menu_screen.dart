@@ -17,7 +17,6 @@ import '../../../modules/subcategories/views/subcategories_screen.dart';
 import '../../../modules/products/views/products_list_screen.dart';
 import '../../../modules/suppliers/views/suppliers_screen.dart';
 import '../../../modules/customers/views/customers_screen.dart';
-import '../../../modules/warehouses/views/warehouses_screen.dart';
 import '../../../modules/units/views/units_screen.dart';
 import '../../../modules/invoices/views/purchase_invoice_screen.dart';
 import '../../../modules/invoices/views/sales_invoice_screen.dart';
@@ -39,12 +38,12 @@ import '../../returns/views/returns_list_screen.dart';
 import '../../returns/views/sales_return_screen.dart';
 import '../../settings/views/shop_settings_screen.dart';
 import '../../../modules/tasks/views/tasks_screen.dart';
+import '../../warehouses/views/warehouses_screen.dart';
 import '../../warehouses/views/damaged_products_screen.dart';
 import '../../auth/views/login_screen.dart';
 
 // 🚀 الشاشات المؤسسية الجديدة (Enterprise ERP Screens)
 import '../../loans/views/loans_screen.dart';
-import '../../reports/views/aging_report_screen.dart';
 import '../../reports/views/cash_flow_screen.dart';
 import '../../reports/views/balance_sheet_screen.dart';
 import '../../inventory/views/inventory_count_screen.dart';
@@ -797,7 +796,6 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> with SingleTick
                 ]),
                 _drawerGroup('التقارير المالية والرقابية', Icons.assessment_rounded, [
                   _dItem(Icons.pie_chart_outline_rounded, 'لوحة التحكم التنفيذية (KPIs)', const Color(0xFF10B981), () => _go(const ExecutiveDashboardScreen())),
-                  _dItem(Icons.history_toggle_off_rounded, 'أعمار الذمم (Aging Report)', const Color(0xFFF97316), () => _go(const AgingReportScreen())),
                   _dItem(Icons.waterfall_chart_rounded, 'قائمة التدفقات النقدية', const Color(0xFF60A5FA), () => _go(const CashFlowScreen())),
                   _dItem(Icons.balance_rounded, 'الميزانية العمومية', const Color(0xFFA78BFA), () => _go(const BalanceSheetScreen())),
                   if (_hasPerm(AppPermissions.profitReports)) _dItem(Icons.trending_up_rounded, 'تحليل الأرباح', AppColors.success, () => _go(const ProfitReportsScreen())),

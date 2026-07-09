@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:930970284046:android:4c092aa93042227a268c5f",
         "android_client_info": {
-          "package_name": "com.example.warehouse_app"
+          "package_name": "com.smartwarehouse.app"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "930970284046-q861arqlggeogkrpki06llhak84s11gf.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.warehouse_app",
+            "package_name": "com.smartwarehouse.app",
             "certificate_hash": "e07472bb14059ca8f0161dbc14481728490a5958"
           }
         },

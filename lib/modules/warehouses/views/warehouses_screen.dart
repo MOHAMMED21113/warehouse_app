@@ -344,6 +344,9 @@ class _WarehousesScreenState extends ConsumerState<WarehousesScreen> with Single
         ),
       ),
     );
+    // تحرير المتحكمات بعد إغلاق الـ dialog لمنع تسريب الذاكرة
+    quantityController.dispose();
+    searchController.dispose();
   }
 
   void _confirmDelete(Map<String, dynamic> warehouse) {

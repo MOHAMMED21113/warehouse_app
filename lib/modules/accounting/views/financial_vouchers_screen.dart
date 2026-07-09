@@ -2,7 +2,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:warehouse_app/core/widgets/transaction_guard.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -945,10 +944,10 @@ class _FinancialVouchersScreenState
       builder: (_) => _AddVoucherSheet(
         colors: c,
         isEditMode: false,
-        onSave: (type, catId, amount, notes) async {
+        onSave: (type, catId, amount, notes, [personName]) async {
           final r = await ref
               .read(financialVouchersProvider.notifier)
-              .addVoucher(categoryId: catId, type: type, amount: amount, notes: notes);
+              .addVoucher(categoryId: catId, type: type, amount: amount, notes: notes, personName: personName);
           if (r['success'] == true) {
             _successOverlay(c, type, isEdit: false);
           } else {
@@ -969,10 +968,10 @@ class _FinancialVouchersScreenState
         colors: c,
         isEditMode: true,
         initialData: v,
-        onSave: (type, catId, amount, notes) async {
+        onSave: (type, catId, amount, notes, [personName]) async {
           final r = await ref
               .read(financialVouchersProvider.notifier)
-              .updateVoucher(voucherId: v['id'], categoryId: catId, amount: amount, notes: notes);
+              .updateVoucher(voucherId: v['id'], categoryId: catId, amount: amount, notes: notes, personName: personName);
           if (r['success'] == true) {
             _successOverlay(c, type, isEdit: true);
           } else {
@@ -1315,7 +1314,7 @@ class _AddVoucherSheet extends ConsumerStatefulWidget {
   final AppThemeColors colors;
   final bool isEditMode;
   final Map<String, dynamic>? initialData;
-  final void Function(String type, int catId, double amount, String notes) onSave;
+  final void Function(String type, int catId, double amount, String notes, [String? personName]) onSave;
 
   const _AddVoucherSheet({
     required this.colors,
@@ -1333,6 +1332,7 @@ class _AddVoucherSheetState extends ConsumerState<_AddVoucherSheet> {
   int? _catId;
   final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
+  final _personNameCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
 
@@ -1344,6 +1344,7 @@ class _AddVoucherSheetState extends ConsumerState<_AddVoucherSheet> {
       _catId = widget.initialData!['category_id'];
       _amountCtrl.text = widget.initialData!['amount'].toString();
       _notesCtrl.text = widget.initialData!['notes'] ?? '';
+      _personNameCtrl.text = widget.initialData!['person_name'] ?? '';
     }
   }
 
@@ -1351,6 +1352,7 @@ class _AddVoucherSheetState extends ConsumerState<_AddVoucherSheet> {
   void dispose() {
     _amountCtrl.dispose();
     _notesCtrl.dispose();
+    _personNameCtrl.dispose();
     super.dispose();
   }
 
@@ -1370,7 +1372,13 @@ class _AddVoucherSheetState extends ConsumerState<_AddVoucherSheet> {
       return;
     }
     setState(() => _saving = true);
-    widget.onSave(_type, _catId!, double.parse(_amountCtrl.text.trim()), _notesCtrl.text.trim());
+    widget.onSave(
+      _type,
+      _catId!,
+      double.parse(_amountCtrl.text.trim()),
+      _notesCtrl.text.trim(),
+      _personNameCtrl.text.trim().isEmpty ? null : _personNameCtrl.text.trim(),
+    );
     Navigator.pop(context);
   }
 
@@ -1493,6 +1501,21 @@ class _AddVoucherSheetState extends ConsumerState<_AddVoucherSheet> {
                           ),
                           const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 20),
                         ]),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // اسم المستلم / الدافع (اختياري)
+                    TextFormField(
+                      controller: _personNameCtrl,
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: c.textMain),
+                      decoration: InputDecoration(
+                        labelText: _type == 'receipt' ? 'استلمنا من السيد/السادة (اختياري)' : 'صرفنا للسيد/السادة (اختياري)',
+                        prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.primary, size: 19),
+                        filled: true, fillColor: c.inputFill,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: _activeClr, width: 1.5)),
                       ),
                     ),
                     const SizedBox(height: 14),

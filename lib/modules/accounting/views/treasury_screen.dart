@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:warehouse_app/core/widgets/transaction_guard.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../core/constants/app_colors.dart';

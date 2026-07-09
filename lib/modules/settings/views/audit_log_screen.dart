@@ -25,17 +25,146 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
   String? _endDate;
 
   final Map<String, String> _tableTranslations = {
-    'products': 'المنتجات (Products)',
-    'sales_invoices': 'فواتير المبيعات (Sales Invoices)',
-    'purchase_invoices': 'فواتير المشتريات (Purchase Invoices)',
-    'customers': 'العملاء (Customers)',
-    'suppliers': 'الموردون (Suppliers)',
-    'loans': 'السلف والقروض (Loans)',
-    'financial_vouchers': 'السندات المالية (Vouchers)',
-    'damaged_products': 'التالف والهالك (Damaged)',
-    'warehouses': 'المستودعات (Warehouses)',
-    'users': 'المستخدمون (Users)',
+    'products': 'المنتجات',
+    'sales_invoices': 'فواتير المبيعات',
+    'purchase_invoices': 'فواتير المشتريات',
+    'customers': 'العملاء',
+    'suppliers': 'الموردون',
+    'loans': 'السلف والقروض',
+    'financial_vouchers': 'السندات المالية',
+    'damaged_products': 'التالف والهالك',
+    'warehouses': 'المستودعات',
+    'users': 'المستخدمون',
+    'purchase_batches': 'دفعات المشتريات',
+    'product_batches': 'دفعات المنتجات',
+    'sales_items': 'أصناف فواتير البيع',
+    'purchase_items': 'أصناف فواتير الشراء',
+    'audit_log': 'سجل الرقابة والتدقيق',
+    'treasury_transactions': 'حركات الصندوق والخزينة',
+    'categories': 'الأقسام الرئيسية',
+    'subcategories': 'الأقسام الفرعية',
+    'units': 'وحدات القياس',
+    'dashboard_summary': 'ملخص لوحة التحكم',
+    'product_serial_numbers': 'الأرقام التسلسلية للمنتجات',
+    'inventory_adjustments': 'تسويات وجرد المخزون',
+    'treasuries': 'الخزائن والصناديق',
+    'financial_categories': 'التصنيفات المالية',
+    'currencies': 'العملات',
+    'account_ledger': 'دفتر الأستاذ العام',
+    'groups': 'المجموعات',
+    'product_warehouse_stock': 'أرصدة المستودعات للمنتجات',
+    'product_prices': 'أسعار المنتجات',
+    'product_unit_conversions': 'تحويلات وحدات القياس',
+    'sales_returns': 'مرتجعات المبيعات',
+    'sales_return_items': 'أصناف مرتجعات المبيعات',
+    'purchase_returns': 'مرتجعات المشتريات',
+    'purchase_return_items': 'أصناف مرتجعات المشتريات',
+    'stock_movements': 'حركات المخزون',
+    'warehouse_movements': 'تحويلات المستودعات',
+    'tasks': 'المهام والأنشطة',
+    'loyalty_points': 'نقاط الولاء',
+    'customer_levels': 'مستويات العملاء',
+    'loyalty_rewards': 'مكافآت الولاء',
+    'loyalty_history': 'سجل حركات الولاء',
+    'coupons': 'كوبونات الخصم',
+    'loyalty_settings': 'إعدادات الولاء',
+    'permissions': 'الصلاحيات والأذونات',
   };
+
+  String _translateFieldName(String key) {
+    const map = {
+      'id': 'الرقم التعريفي (ID)',
+      'name': 'الاسم / البيان',
+      'barcode': 'الباركود',
+      'subcategory_id': 'القسم الفرعي',
+      'category_id': 'القسم الرئيسي',
+      'unit_id': 'وحدة القياس',
+      'currency_id': 'العملة',
+      'unit_price': 'سعر البيع (المستهلك)',
+      'cost_price': 'سعر التكلفة',
+      'selling_price': 'سعر البيع',
+      'selling_price_wholesale': 'سعر الجملة',
+      'current_stock': 'المخزون الحالي',
+      'min_stock': 'الحد الأدنى للمخزون',
+      'supplier_id': 'المورد',
+      'customer_id': 'العميل',
+      'product_id': 'المنتج',
+      'invoice_id': 'الفاتورة',
+      'expiry_date': 'تاريخ انتهاء الصلاحية',
+      'warehouse_id': 'المستودع',
+      'warehouse_stock': 'رصيد المستودع',
+      'bonus_enabled': 'تفعيل البونص',
+      'bonus_required': 'الكمية المطلوبة للبونص',
+      'bonus_amount': 'كمية البونص الممنوحة',
+      'is_active': 'حالة التفعيل',
+      'invoice_number': 'رقم الفاتورة',
+      'invoiceNumber': 'رقم الفاتورة',
+      'voucher_number': 'رقم السند',
+      'amount': 'المبلغ',
+      'total': 'الإجمالي',
+      'total_amount': 'الإجمالي العام',
+      'subtotal': 'المجموع الفرعي',
+      'sub_total': 'المجموع الفرعي',
+      'paid_amount': 'المبلغ المدفوع',
+      'remaining_amount': 'المبلغ المتبقي',
+      'remaining_balance': 'الرصيد المتبقي',
+      'discount': 'الخصم',
+      'discount_percentage': 'نسبة الخصم %',
+      'discount_amount': 'مبلغ الخصم',
+      'max_discount': 'الحد الأقصى للخصم',
+      'tax': 'الضريبة',
+      'payment_type': 'طريقة الدفع',
+      'payment_method': 'طريقة الدفع',
+      'notes': 'الملاحظات / البيان',
+      'date': 'التاريخ',
+      'purchase_date': 'تاريخ الشراء',
+      'due_date': 'تاريخ الاستحقاق',
+      'move_date': 'تاريخ الحركة',
+      'status': 'الحالة',
+      'type': 'النوع',
+      'quantity': 'الكمية',
+      'remaining_quantity': 'الكمية المتبقية',
+      'batch_number': 'رقم الدفعة',
+      'serial_number': 'الرقم التسلسلي (السيريال)',
+      'phone': 'رقم الهاتف',
+      'address': 'العنوان',
+      'person_name': 'الاسم المالي',
+      'person_type': 'الجهة المالية',
+      'username': 'اسم المستخدم',
+      'user_id': 'المستخدم',
+      'moved_by': 'بواسطة المستخدم',
+      'role': 'الصلاحية / الدور',
+      'full_name': 'الاسم الكامل',
+      'permissions': 'قائمة الصلاحيات',
+      'password': 'كلمة المرور',
+      'exchange_rate': 'سعر الصرف',
+      'symbol': 'الرمز',
+      'code': 'الكود',
+      'description': 'الوصف / التفاصيل',
+      'points': 'النقاط',
+      'reward': 'المكافأة',
+      'level_name': 'المستوى',
+      'min_order_amount': 'الحد الأدنى للطلب',
+      'valid_from': 'صالح من تاريخ',
+      'valid_until': 'صالح حتى تاريخ',
+      'usage_limit': 'حد الاستخدام',
+      'used_count': 'مرات الاستخدام',
+      'created_at': 'تاريخ الإنشاء',
+      'updated_at': 'تاريخ التحديث',
+    };
+    return map[key] ?? key;
+  }
+
+  String _formatFieldValue(String key, dynamic value) {
+    if (value == null || value.toString().isEmpty || value.toString() == '-') {
+      return '---';
+    }
+    final vStr = value.toString();
+    if (key == 'bonus_enabled' || key == 'is_active') {
+      return (vStr == '1' || vStr.toLowerCase() == 'true') ? 'نعم (مفعل 🟢)' : 'لا (غير مفعل ⚪)';
+    }
+    return vStr;
+  }
 
   @override
   void initState() {
@@ -271,30 +400,31 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         children: allKeys.map((key) {
-          final oldVal = oldMap[key]?.toString() ?? '-';
-          final newVal = newMap[key]?.toString() ?? '-';
+          final oldVal = _formatFieldValue(key, oldMap[key]);
+          final newVal = _formatFieldValue(key, newMap[key]);
           final isChanged = oldVal != newVal;
 
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isChanged ? AppColors.warning.withValues(alpha: 0.08) : null,
-              border: Border(bottom: BorderSide(color: theme.dividerColor)),
+              border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5))),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: Text(
-                    key,
-                    style: TextStyle(fontSize: 12, fontWeight: isChanged ? FontWeight.bold : FontWeight.normal, color: colorScheme.onSurface),
-                    overflow: TextOverflow.ellipsis,
+                    _translateFieldName(key),
+                    style: TextStyle(fontSize: 12.5, fontWeight: isChanged ? FontWeight.bold : FontWeight.w600, color: colorScheme.onSurface),
                   ),
                 ),
+                const SizedBox(width: 6),
                 Expanded(
                   flex: 3,
                   child: Text(
@@ -304,7 +434,6 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                       color: isChanged ? AppColors.error : colorScheme.onSurface.withValues(alpha: 0.6),
                       decoration: isChanged ? TextDecoration.lineThrough : null,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Icon(Icons.arrow_forward_rounded, size: 14, color: colorScheme.onSurface.withValues(alpha: 0.5)),
@@ -318,7 +447,6 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                       fontWeight: isChanged ? FontWeight.bold : FontWeight.normal,
                       color: isChanged ? AppColors.success : colorScheme.onSurface,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -333,30 +461,43 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
     final colorScheme = theme.colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.06),
-        border: Border.all(color: accentColor.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(8),
+        color: accentColor.withValues(alpha: 0.05),
+        border: Border.all(color: accentColor.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
         children: dataMap.entries.map((entry) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4))),
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  flex: 2,
-                  child: Text(
-                    entry.key,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                  flex: 4,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.label_outline_rounded, size: 15, color: accentColor),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _translateFieldName(entry.key),
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Expanded(
-                  flex: 4,
+                  flex: 5,
                   child: Text(
-                    entry.value?.toString() ?? '-',
-                    style: TextStyle(fontSize: 12, color: colorScheme.onSurface),
+                    _formatFieldValue(entry.key, entry.value),
+                    style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.9), fontWeight: FontWeight.w500),
                   ),
                 ),
               ],
@@ -561,6 +702,7 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                                                   child: Text(
                                                     '${_getActionArabicName(action)} - ${_getTranslatedTableName(log['table_name']?.toString() ?? '')}',
                                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: colorScheme.onSurface),
+                                                    maxLines: 2,
                                                     overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),

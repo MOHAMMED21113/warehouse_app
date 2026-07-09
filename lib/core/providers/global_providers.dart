@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/models/current_user.dart' as cu;
 import '../services/notification_service.dart';
 import '../../main.dart';
 
@@ -238,6 +239,8 @@ class SecurityNotifier extends AsyncNotifier<SecurityState> {
   }
 
   Future<void> logout([BuildContext? context]) async {
+    // 🔴 إصلاح 3: مسح بيانات المستخدم الساكنة أولاً لمنع تسريبها
+    cu.CurrentUser.clear();
     disposeBackgroundExpiryTimer();
     NotificationService().stopPeriodicCheck();
     await lockSession();

@@ -67,6 +67,7 @@ class FinancialVouchersNotifier extends StateNotifier<FinancialVouchersState> {
     required String type,
     required double amount,
     required String notes,
+    String? personName,
   }) async {
     if (!mounted) return {'success': false, 'error': 'Disposed'};
     state = state.copyWith(isLoading: true);
@@ -77,6 +78,7 @@ class FinancialVouchersNotifier extends StateNotifier<FinancialVouchersState> {
         type: type,
         amount: amount,
         notes: notes,
+        personName: personName,
       );
 
       if (result['success'] == true) {
@@ -92,12 +94,13 @@ class FinancialVouchersNotifier extends StateNotifier<FinancialVouchersState> {
     }
   }
 
-  // 🚀 تعديل سند مع ضبط رصيد الخزينة
+  // 🟠 إصلاح عالٍ 5: تعديل سند مع ضبط رصيد الخزينة — داخل معاملة ذرية
   Future<Map<String, dynamic>> updateVoucher({
     required int voucherId,
     required int categoryId,
     required double amount,
     required String notes,
+    String? personName,
   }) async {
     if (!mounted) return {'success': false, 'error': 'Disposed'};
     state = state.copyWith(isLoading: true);
@@ -105,38 +108,46 @@ class FinancialVouchersNotifier extends StateNotifier<FinancialVouchersState> {
       final oldVoucher = state.vouchers.firstWhere((v) => v['id'] == voucherId);
       final type = oldVoucher['type'] as String;
       final oldAmount = (oldVoucher['amount'] as num).toDouble();
+      final difference = amount - oldAmount;
 
       final database = await db.database;
 
-      // 1. تحديث بيانات السند
-      await database.update(
-        'financial_vouchers',
-        {'category_id': categoryId, 'amount': amount, 'notes': notes},
-        where: 'id = ?',
-        whereArgs: [voucherId],
-      );
-
-      // 2. تحديث الرصيد بناءً على الفرق
-      final difference = amount - oldAmount;
-      if (difference != 0) {
-        if (type == 'payment') {
-          await database.rawUpdate(
-              'UPDATE treasuries SET balance = balance - ? WHERE id = 1',
-              [difference]);
-        } else {
-          await database.rawUpdate(
-              'UPDATE treasuries SET balance = balance + ? WHERE id = 1',
-              [difference]);
-        }
-
-        // 3. تحديث حركة الخزينة
-        await database.update(
-          'treasury_transactions',
-          {'amount': amount, 'notes': notes},
-          where: 'reference_type = ? AND reference_id = ?',
-          whereArgs: [type == 'payment' ? 'expense' : 'income', voucherId],
+      // 🔴 تغليف جميع العمليات الثلاث في معاملة ذرية واحدة
+      await database.transaction((txn) async {
+        // 1. تحديث بيانات السند
+        await txn.update(
+          'financial_vouchers',
+          {
+            'category_id': categoryId,
+            'amount': amount,
+            'notes': notes,
+            if (personName != null) 'person_name': personName,
+          },
+          where: 'id = ?',
+          whereArgs: [voucherId],
         );
-      }
+
+        // 2. تحديث الرصيد بناءً على الفرق
+        if (difference != 0) {
+          if (type == 'payment') {
+            await txn.rawUpdate(
+                'UPDATE treasuries SET balance = balance - ? WHERE id = 1',
+                [difference]);
+          } else {
+            await txn.rawUpdate(
+                'UPDATE treasuries SET balance = balance + ? WHERE id = 1',
+                [difference]);
+          }
+
+          // 3. تحديث حركة الخزينة المرتبطة
+          await txn.update(
+            'treasury_transactions',
+            {'amount': amount, 'notes': notes},
+            where: 'reference_type IN (?, ?) AND reference_id = ?',
+            whereArgs: ['expense_voucher', 'income_voucher', voucherId],
+          );
+        }
+      });
 
       await loadAllData();
       return {'success': true};
@@ -147,7 +158,7 @@ class FinancialVouchersNotifier extends StateNotifier<FinancialVouchersState> {
     }
   }
 
-  // 🚀 حذف سند واسترجاع رصيد الخزينة
+  // 🟠 إصلاح عالٍ 5: حذف سند واسترجاع رصيد الخزينة — داخل معاملة ذرية
   Future<Map<String, dynamic>> deleteVoucher(int voucherId) async {
     if (!mounted) return {'success': false, 'error': 'Disposed'};
     state = state.copyWith(isLoading: true);
@@ -158,26 +169,29 @@ class FinancialVouchersNotifier extends StateNotifier<FinancialVouchersState> {
 
       final database = await db.database;
 
-      // 1. إرجاع الرصيد
-      if (type == 'payment') {
-        await database.rawUpdate(
-            'UPDATE treasuries SET balance = balance + ? WHERE id = 1',
-            [amount]);
-      } else {
-        await database.rawUpdate(
-            'UPDATE treasuries SET balance = balance - ? WHERE id = 1',
-            [amount]);
-      }
+      // 🔴 تغليف جميع العمليات الثلاث في معاملة ذرية واحدة
+      await database.transaction((txn) async {
+        // 1. إرجاع الرصيد
+        if (type == 'payment') {
+          await txn.rawUpdate(
+              'UPDATE treasuries SET balance = balance + ? WHERE id = 1',
+              [amount]);
+        } else {
+          await txn.rawUpdate(
+              'UPDATE treasuries SET balance = balance - ? WHERE id = 1',
+              [amount]);
+        }
 
-      // 2. حذف العملية من سجل الخزينة
-      await database.delete(
-          'treasury_transactions',
-          where: 'reference_type = ? AND reference_id = ?',
-          whereArgs: [type == 'payment' ? 'expense' : 'income', voucherId]);
+        // 2. حذف العملية من سجل الخزينة
+        await txn.delete(
+            'treasury_transactions',
+            where: 'reference_type IN (?, ?) AND reference_id = ?',
+            whereArgs: ['expense_voucher', 'income_voucher', voucherId]);
 
-      // 3. حذف السند المالي
-      await database.delete('financial_vouchers',
-          where: 'id = ?', whereArgs: [voucherId]);
+        // 3. حذف السند المالي
+        await txn.delete('financial_vouchers',
+            where: 'id = ?', whereArgs: [voucherId]);
+      });
 
       await loadAllData();
       return {'success': true};
@@ -187,6 +201,7 @@ class FinancialVouchersNotifier extends StateNotifier<FinancialVouchersState> {
       return {'success': false, 'error': e.toString()};
     }
   }
+
   // 🚀 إعادة تنشيط وتحديث البيانات بأمان
   Future<void> refreshData() async {
     if (!mounted) return;

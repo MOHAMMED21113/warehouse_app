@@ -6,7 +6,6 @@ import '../constants/app_colors.dart';
 import '../providers/global_providers.dart';
 import '../services/biometric_service.dart';
 import '../../data/models/current_user.dart';
-import '../../database/database_helper.dart';
 
 class TransactionLockDialog extends ConsumerStatefulWidget {
   final VoidCallback onSuccess;
@@ -119,7 +118,6 @@ class _TransactionLockDialogState extends ConsumerState<TransactionLockDialog>
     final Color textMain = isDark ? AppColors.textPrimary : AppColors.navy;
     final Color textSub  = isDark ? AppColors.textSecondary : AppColors.textHint;
     final Color inputFill = isDark ? AppColors.navy : const Color(0xFFF8FAFC);
-    final Color borderClr = isDark ? AppColors.navyBorder : const Color(0xFFE2E8F0);
 
     return Dialog(
       backgroundColor: Colors.transparent,

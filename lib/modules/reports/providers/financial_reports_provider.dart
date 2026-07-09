@@ -22,11 +22,6 @@ class CashFlowFilter {
   int get hashCode => startDate.hashCode ^ endDate.hashCode;
 }
 
-final agingReportProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  final db = ref.read(databaseHelperProvider);
-  return await db.getAgingReportData();
-});
-
 final cashFlowProvider = FutureProvider.family<Map<String, dynamic>, CashFlowFilter>((ref, filter) async {
   final db = ref.read(databaseHelperProvider);
   return await db.getCashFlowStatement(

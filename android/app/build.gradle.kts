@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.warehouse_app"
+    namespace = "com.smartwarehouse.app"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
     lint {
@@ -25,12 +25,23 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.warehouse_app"
+        // 🔴 إصلاح: تغيير applicationId من القيمة الافتراضية إلى معرّف فريد
+        applicationId = "com.smartwarehouse.app"
         minSdk = 23
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+    }
+
+    // 🟠 إصلاح: تقليل حجم APK بالاقتصار على المعماريات المستخدمة فعلياً
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
     }
 
     buildTypes {
@@ -40,6 +51,7 @@ android {
         }
     }
 }
+
 
 flutter {
     source = "../.."

@@ -50,19 +50,27 @@ class LifecycleManager extends WidgetsBindingObserver {
     }
   }
 
+  // 🔴 إصلاح حرج 2: قفل الجلسة الحقيقي
+  // السبب: الكود القديم كان يُظهر شاشة تسجيل الدخول بصرياً فقط بدون مسح بيانات الجلسة
+  // مما يسمح بتجاوز القفل عند Force-close وإعادة الفتح (is_logged_in=true في SharedPreferences)
   void _showLoginScreen() {
     if (_isLoginScreenShown) return;
-
     _isLoginScreenShown = true;
-    _navigatorKey.currentState
-        ?.pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
-      (route) => false,
-    )
-        .then((_) {
+
+    // استدعاء logout الكامل لضمان مسح is_logged_in + CurrentUser + Providers
+    _ref.read(securityProvider.notifier).logout().then((_) {
       _isLoginScreenShown = false;
+    }).catchError((e) {
+      // fallback: انتقال مباشر إن فشل logout
+      debugPrint('⚠️ LifecycleManager: فشل logout: $e');
+      _navigatorKey.currentState
+          ?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      )
+          .then((_) {
+        _isLoginScreenShown = false;
+      });
     });
   }
 

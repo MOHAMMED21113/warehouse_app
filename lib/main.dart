@@ -176,7 +176,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
-    final securityAsync = ref.watch(securityProvider);
+    ref.watch(securityProvider); // نُراقب securityProvider لإعادة البناء عند تغير حالة الجلسة
 
     return MaterialApp(
       navigatorKey: navigatorKey,

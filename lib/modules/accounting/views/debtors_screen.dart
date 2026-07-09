@@ -33,7 +33,6 @@ class _DebtorsScreenState extends ConsumerState<DebtorsScreen> {
 
   // ألوان خاصة بالمدينين (أحمر)
   static const _debtAccent = Color(0xFFEF4444);
-  static const _debtAccentDark = Color(0xFFDC2626);
 
   bool get _dark => ref.watch(themeModeProvider) == ThemeMode.dark;
   // تم ضبط ألوان الخلفيات لتكون مريحة في الوضع الداكن

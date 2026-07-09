@@ -22,17 +22,21 @@ class InvoicePrinter {
   static final _textDark = PdfColor.fromHex('#2C3E50');
   static final _textMuted = PdfColor.fromHex('#7F8C8D');
 
-  static Future<pw.Font> _loadFont(String path) async {
-    final data = await rootBundle.load(path);
-    return pw.Font.ttf(data);
-  }
+  static pw.Font? _cachedRegularFont;
+  static pw.Font? _cachedBoldFont;
 
   static Future<pw.Font> _loadRegularFont() async {
-    return await _loadFont('assets/fonts/NotoNaskhArabic-Regular.ttf');
+    if (_cachedRegularFont != null) return _cachedRegularFont!;
+    final data = await rootBundle.load('assets/fonts/NotoNaskhArabic-Regular.ttf');
+    _cachedRegularFont = pw.Font.ttf(data);
+    return _cachedRegularFont!;
   }
 
   static Future<pw.Font> _loadBoldFont() async {
-    return await _loadFont('assets/fonts/NotoNaskhArabic-Bold.ttf');
+    if (_cachedBoldFont != null) return _cachedBoldFont!;
+    final data = await rootBundle.load('assets/fonts/NotoNaskhArabic-Bold.ttf');
+    _cachedBoldFont = pw.Font.ttf(data);
+    return _cachedBoldFont!;
   }
 
   static String _formatNumber(num value) {
@@ -89,7 +93,7 @@ class InvoicePrinter {
 
     // English fields
     String shopNameEn = prefs.getString('shop_name_en') ?? 'Fraternity Agreement Est.';
-    String _shopAddressEn = prefs.getString('shop_address_en') ?? '';
+    prefs.getString('shop_address_en'); // مُحفوظة للاستخدام المستقبلي
     String crNumber = prefs.getString('cr_number') ?? '';
     String taxNumber = prefs.getString('tax_number') ?? '';
     String shopActivityEn = prefs.getString('shop_activity_en') ?? 'Contracting - detecting water leaks\nThermal Water Insulators - Foam';
@@ -111,21 +115,65 @@ class InvoicePrinter {
     final int amountInt = amountVal.truncate();
     final int amountFraction = ((amountVal - amountInt) * 100).round();
     final String amountStr = amountInt.toString();
-    final String _fractionStr = amountFraction.toString().padLeft(2, '0');
+    final String fractionStr = amountFraction.toString().padLeft(2, '0');
 
     final String voucherNumber = voucher['voucher_number']?.toString() ?? '---';
 
-    String rawNotes = voucher['notes']?.toString() ?? '';
-    String finalPersonName = personName ?? '';
+    String rawNotes = (voucher['notes'] ?? voucher['statement'] ?? voucher['description'] ?? '').toString();
+    if (rawNotes.trim().isEmpty && (voucher['invoice_id'] != null || voucher['reference_number'] != null)) {
+      final refNum = voucher['reference_number'] ?? voucher['invoice_number'] ?? voucher['invoice_id'];
+      if (refNum != null && refNum.toString().trim().isNotEmpty) {
+        rawNotes = 'دفعة مالية عن فاتورة رقم: $refNum';
+      }
+    }
+    String finalPersonName = personName?.trim() ?? '';
     String cleanNotes = rawNotes;
 
+    // 1. الأولوية الأولى: الاسم المحلول من قاعدة البيانات (v.person_name أو اسم العميل أو اسم المورد)
     if (finalPersonName.isEmpty) {
-      if (rawNotes.contains(' - ')) {
-        final parts = rawNotes.split(' - ');
-        finalPersonName = parts.last.trim();
+      final String? resolvedName = voucher['resolved_person_name']?.toString() ?? voucher['person_name']?.toString();
+      if (resolvedName != null && resolvedName.trim().isNotEmpty && resolvedName.trim() != 'عام') {
+        finalPersonName = resolvedName.trim();
+      }
+    }
+
+    // 2. الأولوية الثانية: اسم التصنيف المالي (مثل: رأس المال، رواتب وأجور، إيجارات، إلخ) إذا لم يكن "عام"
+    if (finalPersonName.isEmpty) {
+      final String? catName = voucher['category_name']?.toString();
+      if (catName != null && catName.trim().isNotEmpty && catName.trim() != 'عام') {
+        finalPersonName = catName.trim();
+      }
+    }
+
+    // 3. الأولوية الثالثة: إذا كان هناك اسم في الملاحظات مفصول بـ ' - '
+    if (finalPersonName.isEmpty && rawNotes.contains(' - ')) {
+      final parts = rawNotes.split(' - ');
+      final possibleName = parts.last.trim();
+      if (possibleName.isNotEmpty) {
+        finalPersonName = possibleName;
         cleanNotes = parts.sublist(0, parts.length - 1).join(' - ').trim();
+      }
+    }
+
+    // 4. الملاذ الأخير: إذا لم يوجد أي شخص أو تصنيف مالي محدد
+    if (finalPersonName.isEmpty) {
+      finalPersonName = isReceipt ? 'عميل نقدي' : 'مورد نقدي';
+    } else if (rawNotes.contains(' - ') && cleanNotes == rawNotes) {
+      final parts = rawNotes.split(' - ');
+      if (parts.last.trim() == finalPersonName) {
+        cleanNotes = parts.sublist(0, parts.length - 1).join(' - ').trim();
+      }
+    }
+
+    // إذا كانت الملاحظات فارغة بعد التنظيف، نضع بياناً تلقائياً واضحاً بدلاً من ترك الخط فارغاً
+    if (cleanNotes.trim().isEmpty) {
+      final String? catName = voucher['category_name']?.toString();
+      if (catName != null && catName.trim().isNotEmpty && catName.trim() != 'عام' && finalPersonName != catName.trim()) {
+        cleanNotes = 'بند: ${catName.trim()}';
+      } else if (finalPersonName == 'رأس المال') {
+        cleanNotes = 'إيداع رأس مال بالصندوق';
       } else {
-        finalPersonName = isReceipt ? 'عميل نقدي' : 'مورد نقدي';
+        cleanNotes = isReceipt ? 'دفعة نقدية مستلمة' : 'دفعة نقدية مصروفة';
       }
     }
 
@@ -171,7 +219,7 @@ class InvoicePrinter {
         theme: pw.ThemeData.withFont(base: ttfRegular, bold: ttfBold),
         build: (pw.Context context) {
           return pw.Container(
-            padding: const pw.EdgeInsets.all(15),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: _navyMedium, width: 1.5),
             ),
@@ -294,7 +342,7 @@ class InvoicePrinter {
                     ),
                   ],
                 ),
-                pw.SizedBox(height: 15),
+                pw.SizedBox(height: 8),
 
                 // Amount and Meta Box
                 pw.Row(
@@ -364,7 +412,7 @@ class InvoicePrinter {
                     ),
                   ],
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 8),
 
                 // Body text (Receipt From, etc)
                 pw.Row(
@@ -386,7 +434,7 @@ class InvoicePrinter {
                         textDirection: pw.TextDirection.ltr),
                   ],
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 8),
 
                 pw.Row(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
@@ -407,7 +455,7 @@ class InvoicePrinter {
                         textDirection: pw.TextDirection.ltr),
                   ],
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 8),
 
                 // Checkboxes Line
                 pw.Row(
@@ -449,12 +497,12 @@ class InvoicePrinter {
                     )
                   ],
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 8),
 
                 pw.Row(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text('وذلك عن قيمة',
+                    pw.Text('البيان / الملاحظات :',
                         style: pw.TextStyle(
                             font: ttfBold, fontSize: 12, color: _navyMedium)),
                     dottedLineContainer(
@@ -464,13 +512,13 @@ class InvoicePrinter {
                             textAlign: pw.TextAlign.center),
                       ),
                     ),
-                    pw.Text('For',
+                    pw.Text('Statement / Notes',
                         style: pw.TextStyle(
                             font: ttfBold, fontSize: 11, color: _navyMedium),
                         textDirection: pw.TextDirection.ltr),
                   ],
                 ),
-                pw.SizedBox(height: 25),
+                pw.SizedBox(height: 8),
 
                 // Extra dotted line just like in the image
                 pw.Row(
@@ -1114,7 +1162,7 @@ class InvoicePrinter {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text(' ملاحظات الفاتورة : $displayNotes', style: pw.TextStyle(font: ttfBold, fontSize: 13, color: _navy)),
+                        pw.Text(' البيان / الملاحظات : $displayNotes', style: pw.TextStyle(font: ttfBold, fontSize: 13, color: _navy)),
                       ],
                     ),
                   ),
