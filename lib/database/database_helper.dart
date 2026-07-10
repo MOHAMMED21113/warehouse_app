@@ -5259,6 +5259,7 @@ class DatabaseHelper {
             );
           }
         }
+
         // ----- 4. جلب بيانات الفاتورة الرئيسية -----
         final invoiceNumber = invoice['invoice_number'] as String;
         final int? personId = invoice[personIdColumn] as int?;
