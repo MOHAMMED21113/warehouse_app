@@ -5,6 +5,11 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Fix: Force Kotlin to compile in-process (bypass daemon connection issues)
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerExecutionStrategy.set(org.jetbrains.kotlin.gradle.tasks.KotlinCompilerExecutionStrategy.IN_PROCESS)
+}
+
 android {
     namespace = "com.smartwarehouse.app"
     compileSdk = 36
@@ -34,15 +39,6 @@ android {
         multiDexEnabled = true
     }
 
-    // 🟠 إصلاح: تقليل حجم APK بالاقتصار على المعماريات المستخدمة فعلياً
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = false
-        }
-    }
 
     buildTypes {
         release {
