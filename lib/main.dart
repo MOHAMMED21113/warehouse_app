@@ -38,7 +38,6 @@ void disposeBackgroundExpiryTimer() {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();  // ✅ سيقرأ الملف من جذر المشروع
-
   await GetStorage.init();
 
   try {
