@@ -29,8 +29,17 @@ android {
         jvmTarget = "17"
     }
 
+    // ✅ توقيع Release مدمج تلقائياً - لا حاجة لكلمة مرور خارجية
+    signingConfigs {
+        create("release") {
+            storeFile = file("upload-keystore.jks")
+            storePassword = "android"
+            keyAlias = "upload"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
-        // 🔴 إصلاح: تغيير applicationId من القيمة الافتراضية إلى معرّف فريد
         applicationId = "com.smartwarehouse.app"
         minSdk = 23
         targetSdk = 34
@@ -39,10 +48,11 @@ android {
         multiDexEnabled = true
     }
 
-
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
