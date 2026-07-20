@@ -1460,7 +1460,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen>
   // ==================== حالة فارغة ====================
   Widget _buildEmptyState(bool isDark) {
     return Center(
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
@@ -1529,6 +1530,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen>
             ),
           ),
         ],
+      ),
       ),
     );
   }

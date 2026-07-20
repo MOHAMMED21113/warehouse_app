@@ -244,47 +244,55 @@ class DatabaseHelper {
 
   Future<void> ensureAllColumnsExist(DatabaseExecutor db) async {
     try {
+      Future<void> addColumn(String table, String column, String definition) async {
+        final List<Map<String, dynamic>> columns = await db.rawQuery('PRAGMA table_info($table)');
+        final bool exists = columns.any((c) => c['name'] == column);
+        if (!exists) {
+          await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
+        }
+      }
+
       // 🚀 purchase_batches (أهم إصلاح لمشكلة حفظ المشتريات وتواريخ الصلاحية والدفعة)
-      try { await db.execute('ALTER TABLE purchase_batches ADD COLUMN batch_number TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE purchase_batches ADD COLUMN expiry_date TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE purchase_batches ADD COLUMN invoice_id INTEGER'); } catch (_) {}
+      await addColumn('purchase_batches', 'batch_number', 'TEXT');
+      await addColumn('purchase_batches', 'expiry_date', 'TEXT');
+      await addColumn('purchase_batches', 'invoice_id', 'INTEGER');
 
       // 🚀 product_batches
-      try { await db.execute('ALTER TABLE product_batches ADD COLUMN batch_number TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE product_batches ADD COLUMN expiry_date TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE product_batches ADD COLUMN supplier_id INTEGER'); } catch (_) {}
+      await addColumn('product_batches', 'batch_number', 'TEXT');
+      await addColumn('product_batches', 'expiry_date', 'TEXT');
+      await addColumn('product_batches', 'supplier_id', 'INTEGER');
 
       // 🚀 financial_vouchers
-      try { await db.execute('ALTER TABLE financial_vouchers ADD COLUMN invoice_id INTEGER'); } catch (_) {}
-      try { await db.execute('ALTER TABLE financial_vouchers ADD COLUMN invoice_type TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE financial_vouchers ADD COLUMN person_id INTEGER'); } catch (_) {}
-      try { await db.execute('ALTER TABLE financial_vouchers ADD COLUMN person_type TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE financial_vouchers ADD COLUMN person_name TEXT'); } catch (_) {}
+      await addColumn('financial_vouchers', 'invoice_id', 'INTEGER');
+      await addColumn('financial_vouchers', 'invoice_type', 'TEXT');
+      await addColumn('financial_vouchers', 'person_id', 'INTEGER');
+      await addColumn('financial_vouchers', 'person_type', 'TEXT');
+      await addColumn('financial_vouchers', 'person_name', 'TEXT');
 
       // 🚀 sales_invoices
-      try { await db.execute('ALTER TABLE sales_invoices ADD COLUMN discount REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE sales_invoices ADD COLUMN tax REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE sales_invoices ADD COLUMN discount_amount REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE sales_invoices ADD COLUMN tax_rate REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE sales_invoices ADD COLUMN tax_amount REAL DEFAULT 0'); } catch (_) {}
+      await addColumn('sales_invoices', 'discount', 'REAL DEFAULT 0');
+      await addColumn('sales_invoices', 'tax', 'REAL DEFAULT 0');
+      await addColumn('sales_invoices', 'discount_amount', 'REAL DEFAULT 0');
+      await addColumn('sales_invoices', 'tax_rate', 'REAL DEFAULT 0');
+      await addColumn('sales_invoices', 'tax_amount', 'REAL DEFAULT 0');
 
       // 🚀 sales_items
-      try { await db.execute('ALTER TABLE sales_items ADD COLUMN cost_price REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE sales_items ADD COLUMN discount_percent REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE sales_items ADD COLUMN discount_amount REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE sales_items ADD COLUMN is_bonus INTEGER DEFAULT 0'); } catch (_) {}
+      await addColumn('sales_items', 'cost_price', 'REAL DEFAULT 0');
+      await addColumn('sales_items', 'discount_percent', 'REAL DEFAULT 0');
+      await addColumn('sales_items', 'discount_amount', 'REAL DEFAULT 0');
+      await addColumn('sales_items', 'is_bonus', 'INTEGER DEFAULT 0');
 
       // 🚀 purchase_items
-      try { await db.execute('ALTER TABLE purchase_items ADD COLUMN expiry_date TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE purchase_items ADD COLUMN batch_number TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE purchase_items ADD COLUMN bonus_quantity REAL DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE purchase_items ADD COLUMN discount_percentage REAL DEFAULT 0'); } catch (_) {}
+      await addColumn('purchase_items', 'expiry_date', 'TEXT');
+      await addColumn('purchase_items', 'batch_number', 'TEXT');
+      await addColumn('purchase_items', 'bonus_quantity', 'REAL DEFAULT 0');
+      await addColumn('purchase_items', 'discount_percentage', 'REAL DEFAULT 0');
 
       // 🚀 users
-      try { await db.execute('ALTER TABLE users ADD COLUMN full_name TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE users ADD COLUMN permissions TEXT'); } catch (_) {}
-      try { await db.execute('ALTER TABLE users ADD COLUMN has_biometric INTEGER DEFAULT 0'); } catch (_) {}
-      try { await db.execute('ALTER TABLE users ADD COLUMN secure_permissions TEXT'); } catch (_) {}
+      await addColumn('users', 'full_name', 'TEXT');
+      await addColumn('users', 'permissions', 'TEXT');
+      await addColumn('users', 'has_biometric', 'INTEGER DEFAULT 0');
+      await addColumn('users', 'secure_permissions', 'TEXT');
     } catch (e) {
       debugPrint('⚠️ Error checking columns: $e');
     }
@@ -4003,7 +4011,7 @@ class DatabaseHelper {
   // جلب السندات مع اسم العميل/المورد من جداول customers و suppliers
   Future<List<Map<String, dynamic>>> getAllFinancialVouchers() async =>
       await (await database).rawQuery(
-          'SELECT v.*, COALESCE(c.name, "عام") as category_name, COALESCE(t.name, "الصندوق الرئيسي") as treasury_name,'
+          'SELECT v.*, COALESCE(c.name, \'عام\') as category_name, COALESCE(t.name, \'الصندوق الرئيسي\') as treasury_name,'
           ' COALESCE(v.person_name, cu.name, su.name) as resolved_person_name'
           ' FROM financial_vouchers v'
           ' LEFT JOIN financial_categories c ON v.category_id = c.id'

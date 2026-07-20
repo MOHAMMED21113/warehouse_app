@@ -137,6 +137,25 @@ class SettingsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _SettingTile(
+                      icon: Icons.lock_rounded,
+                      iconBg: rose.withOpacity(0.15),
+                      iconColor: rose,
+                      title: 'قفل العمليات المالية',
+                      subtitle: 'يتطلب إدخال كلمة المرور عند حفظ الفواتير',
+                      textMain: textMain,
+                      textSub: textSub,
+                      trailing: Switch(
+                        value: ref.watch(securityProvider).value?.isTransactionLockEnabled ?? false,
+                        onChanged: (v) => ref.read(securityProvider.notifier).toggleTransactionLock(v),
+                        activeColor: AppColors.primary,
+                      ),
+                      onTap: () {
+                        final current = ref.watch(securityProvider).value?.isTransactionLockEnabled ?? false;
+                        ref.read(securityProvider.notifier).toggleTransactionLock(!current);
+                      },
+                    ),
+                    Divider(height: 24, color: cardBorder.withOpacity(0.6)),
                     Text('مدة قفل التطبيق التلقائي',
                         style: TextStyle(fontSize: 13, color: textSub)),
                     const SizedBox(height: 12),

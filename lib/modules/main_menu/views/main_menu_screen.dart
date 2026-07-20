@@ -492,12 +492,12 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> with SingleTick
     final Color cardBorder = dark ? AppColors.navyBorder : const Color(0xFFE2E8F0);
 
     final allItems = [
-      _GridItem(Icons.point_of_sale_rounded, 'نقطة البيع', 'إنشاء فاتورة بيع جديدة', AppColors.success, 'sales', () => _go(const SalesInvoiceScreen())),
-      _GridItem(Icons.shopping_cart_rounded, 'فاتورة شراء', 'تسجيل بضاعة واردة', _purchaseAccent, 'purchase', () => _go(const PurchaseInvoiceScreen())),
-      _GridItem(Icons.inventory_2_rounded, 'المنتجات', 'إدارة المخزون والأصناف', const Color(0xFF60A5FA), 'products', () => _go(const ProductsListScreen())),
-      _GridItem(Icons.people_rounded, 'العملاء', 'سجل العملاء والحسابات', const Color(0xFF34D399), 'customers', () => _go(const CustomersScreen())),
-      _GridItem(Icons.undo_rounded, 'مرتجع مبيعات', 'إرجاع منتجات من عميل', const Color(0xFFF97316), 'sales_returns', () => _go(const SalesReturnScreen())),
-      _GridItem(Icons.replay_rounded, 'مرتجع مشتريات', 'إرجاع منتجات لمورد', const Color(0xFF10B981), 'purchase_returns', () => _go(const PurchaseReturnScreen())),
+      _GridItem(Icons.point_of_sale_rounded, 'نقطة البيع', 'إنشاء فاتورة بيع جديدة', AppColors.success, AppPermissions.salesInvoice, () => _go(const SalesInvoiceScreen())),
+      _GridItem(Icons.shopping_cart_rounded, 'فاتورة شراء', 'تسجيل بضاعة واردة', _purchaseAccent, AppPermissions.purchaseInvoice, () => _go(const PurchaseInvoiceScreen())),
+      _GridItem(Icons.inventory_2_rounded, 'المنتجات', 'إدارة المخزون والأصناف', const Color(0xFF60A5FA), AppPermissions.productsList, () => _go(const ProductsListScreen())),
+      _GridItem(Icons.people_rounded, 'العملاء', 'سجل العملاء والحسابات', const Color(0xFF34D399), AppPermissions.customers, () => _go(const CustomersScreen())),
+      _GridItem(Icons.undo_rounded, 'مرتجع مبيعات', 'إرجاع منتجات من عميل', const Color(0xFFF97316), AppPermissions.salesReturn, () => _go(const SalesReturnScreen())),
+      _GridItem(Icons.replay_rounded, 'مرتجع مشتريات', 'إرجاع منتجات لمورد', const Color(0xFF10B981), AppPermissions.purchaseReturn, () => _go(const PurchaseReturnScreen())),
     ];
 
     final items = allItems.where((item) => _hasPerm(item.permission)).toList();

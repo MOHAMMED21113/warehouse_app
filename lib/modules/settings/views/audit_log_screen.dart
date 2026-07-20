@@ -19,6 +19,9 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
   List<Map<String, dynamic>> _logs = [];
   List<String> _availableTables = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  static const int _pageSize = 50;
   String _selectedTable = 'all';
   String _selectedAction = 'all';
   String? _startDate;
@@ -185,20 +188,36 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
     await _loadLogs();
   }
 
-  Future<void> _loadLogs() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadLogs({bool loadMore = false}) async {
+    if (loadMore) {
+      setState(() => _isLoadingMore = true);
+    } else {
+      setState(() {
+        _isLoading = true;
+        _hasMore = true;
+      });
+    }
     final db = ref.read(databaseHelperProvider);
     final service = AuditLogService(db);
+    final offset = loadMore ? _logs.length : 0;
     final res = await service.getAuditLog(
       tableName: _selectedTable,
       action: _selectedAction,
       startDate: _startDate,
       endDate: _endDate,
+      limit: _pageSize,
+      offset: offset,
     );
     if (mounted) {
       setState(() {
-        _logs = res;
-        _isLoading = false;
+        if (loadMore) {
+          _logs.addAll(res);
+          _isLoadingMore = false;
+        } else {
+          _logs = res;
+          _isLoading = false;
+        }
+        _hasMore = res.length >= _pageSize;
       });
     }
   }
@@ -229,6 +248,7 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
     );
 
     if (picked != null) {
+      if (!mounted) return;
       setState(() {
         _startDate = DateFormat('yyyy-MM-dd').format(picked.start);
         _endDate = DateFormat('yyyy-MM-dd').format(picked.end);
@@ -661,8 +681,30 @@ class _AuditLogScreenState extends ConsumerState<AuditLogScreen> {
                         onRefresh: _loadLogs,
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          itemCount: _logs.length,
+                          itemCount: _logs.length + (_hasMore ? 1 : 0),
                           itemBuilder: (context, index) {
+                            // زر "تحميل المزيد" في آخر القائمة
+                            if (index == _logs.length) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                child: Center(
+                                  child: _isLoadingMore
+                                      ? CircularProgressIndicator(color: colorScheme.primary, strokeWidth: 2.5)
+                                      : OutlinedButton.icon(
+                                          onPressed: () => _loadLogs(loadMore: true),
+                                          icon: const Icon(Icons.expand_more_rounded),
+                                          label: Text('تحميل المزيد (${_logs.length} سجل محمّل)'),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: colorScheme.primary,
+                                            side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.5)),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                          ),
+                                        ),
+                                ),
+                              );
+                            }
+
                             final log = _logs[index];
                             final action = log['action']?.toString() ?? '';
                             final color = _getActionColor(action);

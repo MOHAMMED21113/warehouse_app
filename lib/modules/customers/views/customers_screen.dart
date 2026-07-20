@@ -76,9 +76,11 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen>
     setState(() => _isLoadingMore = true);
     _currentPage++;
     final db = ref.read(databaseHelperProvider);
+    final query = _searchController.text.trim();
     final newCustomers = await db.getCustomersPaginated(
       page: _currentPage,
       limit: _limit,
+      searchQuery: query.isNotEmpty ? query : null,
     );
     if (newCustomers.isEmpty) {
       setState(() {
@@ -103,8 +105,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen>
     _hasMore = true;
     try {
       final db = ref.read(databaseHelperProvider);
-      final customers =
-          await db.getCustomersPaginated(page: 1, limit: _limit);
+      final query = _searchController.text.trim();
+      final customers = await db.getCustomersPaginated(
+        page: 1, 
+        limit: _limit,
+        searchQuery: query.isNotEmpty ? query : null,
+      );
       if (!mounted) return;
       setState(() {
         _customers = customers;
@@ -133,24 +139,10 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen>
   }
 
   void _filterCustomers() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      final query = _searchController.text.trim().toLowerCase();
-      setState(() {
-        if (query.isEmpty) {
-          _filteredCustomers = List.from(_customers);
-        } else {
-          _filteredCustomers = _customers.where((c) {
-            final name = (c['name'] ?? '').toString().toLowerCase();
-            final phone = (c['phone'] ?? '').toString().toLowerCase();
-            final address = (c['address'] ?? '').toString().toLowerCase();
-            return name.contains(query) ||
-                phone.contains(query) ||
-                address.contains(query);
-          }).toList();
-        }
-      });
+      _loadCustomers();
     });
   }
 

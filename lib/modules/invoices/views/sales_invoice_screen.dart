@@ -1583,7 +1583,7 @@ class _SalesInvoiceScreenState extends ConsumerState<SalesInvoiceScreen>
                     mainText: mainText,
                     subText: subText,
                     controller: _cashController,
-                    label: 'كاش 💵',
+                    label: 'كاش ',
                     icon: Icons.money_rounded,
                     onChanged: (v) => notifier.updatePayments(
                         double.tryParse(v) ?? 0, state.transferAmount),
@@ -1597,7 +1597,7 @@ class _SalesInvoiceScreenState extends ConsumerState<SalesInvoiceScreen>
                     mainText: mainText,
                     subText: subText,
                     controller: _transferController,
-                    label: 'حوالة 🏦',
+                    label: 'حوالة',
                     icon: Icons.account_balance_rounded,
                     onChanged: (v) => notifier.updatePayments(
                         state.cashAmount, double.tryParse(v) ?? 0),

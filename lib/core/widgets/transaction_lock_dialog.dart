@@ -74,12 +74,14 @@ class _TransactionLockDialogState extends ConsumerState<TransactionLockDialog>
         widget.onSuccess();
         if (mounted) Navigator.of(context).pop();
       } else {
+        if (!mounted) return;
         setState(() {
           _hasFailed = true;
           _errorMessage = 'كلمة المرور غير صحيحة';
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _hasFailed = true;
         _errorMessage = 'حدث خطأ أثناء التحقق';
@@ -99,6 +101,7 @@ class _TransactionLockDialogState extends ConsumerState<TransactionLockDialog>
       widget.onSuccess();
       if (mounted) Navigator.of(context).pop();
     } else {
+      if (!mounted) return;
       setState(() {
         _hasFailed = true;
         _errorMessage = 'فشل التحقق من البصمة';

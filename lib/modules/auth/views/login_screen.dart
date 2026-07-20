@@ -58,7 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     } catch (e) {
       debugPrint('Error in LoginScreen init: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       _animCtrl.forward();
     }
   }
@@ -87,6 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       return;
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       // 🎯 استخدام دالة login من قاعدة البيانات بدلاً من التحقق اليدوي هنا
@@ -126,6 +127,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       );
 
       if (authenticated) {
+        if (!mounted) return;
         setState(() => _isLoading = true);
         final prefs = await SharedPreferences.getInstance();
         final lastUsername = prefs.getString('last_logged_in_username');
@@ -148,7 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
             targetUser = users.first;
           } else {
             _showSnack('يرجى تسجيل الدخول بكلمة المرور لتحديد الحساب أولاً', AppColors.warning);
-            setState(() => _isLoading = false);
+            if (mounted) setState(() => _isLoading = false);
             return;
           }
         }
@@ -157,7 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       }
     } catch (e) {
       _showSnack('فشل التحقق بالبصمة', AppColors.error);
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

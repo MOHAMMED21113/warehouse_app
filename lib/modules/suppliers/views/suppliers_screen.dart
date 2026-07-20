@@ -76,9 +76,11 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen>
     setState(() => _isLoadingMore = true);
     _currentPage++;
     final db = ref.read(databaseHelperProvider);
+    final query = _searchController.text.trim();
     final newSuppliers = await db.getSuppliersPaginated(
       page: _currentPage,
       limit: _limit,
+      searchQuery: query.isNotEmpty ? query : null,
     );
     if (newSuppliers.isEmpty) {
       setState(() {
@@ -103,8 +105,12 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen>
     _hasMore = true;
     try {
       final db = ref.read(databaseHelperProvider);
-      final suppliers =
-          await db.getSuppliersPaginated(page: 1, limit: _limit);
+      final query = _searchController.text.trim();
+      final suppliers = await db.getSuppliersPaginated(
+        page: 1, 
+        limit: _limit,
+        searchQuery: query.isNotEmpty ? query : null,
+      );
       if (!mounted) return;
       setState(() {
         _suppliers = suppliers;
@@ -133,22 +139,10 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen>
   }
 
   void _filterSuppliers() {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      final query = _searchController.text.trim().toLowerCase();
-      setState(() {
-        if (query.isEmpty) {
-          _filteredSuppliers = List.from(_suppliers);
-        } else {
-          _filteredSuppliers = _suppliers
-              .where((s) =>
-                  (s['name'] ?? '').toLowerCase().contains(query) ||
-                  (s['phone'] ?? '').toLowerCase().contains(query) ||
-                  (s['address'] ?? '').toLowerCase().contains(query))
-              .toList();
-        }
-      });
+      _loadSuppliers();
     });
   }
 
