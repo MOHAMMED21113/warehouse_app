@@ -124,7 +124,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> with SingleTick
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         title: const Text(
-          'المخازن الذكية',
+          'المخازن الذكي',
           style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [

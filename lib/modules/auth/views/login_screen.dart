@@ -459,7 +459,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                 'permissions': '["*"]',
                 'secure_permissions': '[]',
                 'has_biometric': 0,
-                'created_at': DateTime.now().toIso8601String(),
               });
               
               if (context.mounted) {
