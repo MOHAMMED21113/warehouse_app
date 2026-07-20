@@ -809,7 +809,39 @@ class _PurchaseInvoiceScreenState extends ConsumerState<PurchaseInvoiceScreen>
     final textHint = isDark ? AppColors.darkTextHint : const Color(0xFF94A3B8);
     final inputFill = isDark ? AppColors.navyLight : Colors.white;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_cartItems.isEmpty) {
+          Navigator.of(context).pop();
+          return;
+        }
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: isDark ? AppColors.navyMedium : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text('تنبيه', style: TextStyle(color: isDark ? Colors.white : AppColors.navy, fontWeight: FontWeight.bold)),
+            content: Text('لديك منتجات في السلة، هل أنت متأكد من الخروج دون حفظ؟', style: TextStyle(color: isDark ? Colors.white70 : AppColors.navy)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('إلغاء', style: TextStyle(color: AppColors.primary)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+                child: const Text('نعم، اخرج'),
+              ),
+            ],
+          ),
+        );
+        if (shouldPop == true && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
       backgroundColor: scaffoldBg,
       appBar: AppBar(
         backgroundColor: isDark ? AppColors.navyMedium : AppColors.navy,
@@ -821,7 +853,34 @@ class _PurchaseInvoiceScreenState extends ConsumerState<PurchaseInvoiceScreen>
               color: AppColors.primary),
           onPressed: () {
             FocusManager.instance.primaryFocus?.unfocus();
-            Navigator.pop(context);
+            if (_cartItems.isEmpty) {
+              Navigator.pop(context);
+              return;
+            }
+            showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: isDark ? AppColors.navyMedium : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text('تنبيه', style: TextStyle(color: isDark ? Colors.white : AppColors.navy, fontWeight: FontWeight.bold)),
+                content: Text('لديك منتجات في السلة، هل أنت متأكد من الخروج دون حفظ؟', style: TextStyle(color: isDark ? Colors.white70 : AppColors.navy)),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('إلغاء', style: TextStyle(color: AppColors.primary)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+                    child: const Text('نعم، اخرج'),
+                  ),
+                ],
+              ),
+            ).then((shouldPop) {
+              if (shouldPop == true && context.mounted) {
+                Navigator.pop(context);
+              }
+            });
           },
         ),
         title: Row(
@@ -910,6 +969,7 @@ class _PurchaseInvoiceScreenState extends ConsumerState<PurchaseInvoiceScreen>
           ),
         ),
       ),
+    ),
     );
   }
 

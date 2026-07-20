@@ -259,9 +259,10 @@ class SecurityNotifier extends AsyncNotifier<SecurityState> {
     ref.invalidate(databaseHelperProvider);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_logged_in', false);
-    if (context != null && context.mounted) {
+    final navContext = (context != null && context.mounted) ? context : navigatorKey.currentContext;
+    if (navContext != null && navContext.mounted) {
       Navigator.pushAndRemoveUntil(
-        context,
+        navContext,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
       );

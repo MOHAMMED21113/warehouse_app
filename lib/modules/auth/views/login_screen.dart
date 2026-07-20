@@ -8,6 +8,7 @@ import '../../../database/database_helper.dart';
 import '../../../data/models/current_user.dart';
 import '../../../data/models/user_model.dart';
 import '../../main_menu/views/main_menu_screen.dart';
+import 'package:bcrypt/bcrypt.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -26,6 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
 
   bool _isLoading = true;
   bool _hasBiometricHardware = false;
+  bool _noUsers = false;
 
   late AnimationController _animCtrl;
   late Animation<double> _fadeAnim;
@@ -45,6 +47,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   Future<void> _checkStatus() async {
     try {
       final users = await db.getAllUsers();
+      _noUsers = users.isEmpty;
       print('🚀 [LoginScreen] users count = ${users.length}');
       if (users.isNotEmpty) {
         print('🚀 [LoginScreen] users[0] = ${users.first}');
@@ -329,6 +332,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   }
 
   Widget _buildForm() {
+    if (_noUsers) {
+      return Column(
+        children: [
+          const Text(
+            'لا يوجد مستخدمين في النظام، يرجى إنشاء حساب المدير للبدء.',
+            style: TextStyle(color: Colors.white, fontSize: 15),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _showCreateAdminDialog,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.navy,
+              minimumSize: const Size(double.infinity, 54),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 4,
+            ),
+            child: const Text(
+              'إنشاء حساب المدير الأولي',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       children: [
         _buildTextField(
@@ -391,6 +420,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
+      ),
+    );
+  }
+
+  void _showCreateAdminDialog() {
+    final adminUserCtrl = TextEditingController();
+    final adminPassCtrl = TextEditingController();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.navyCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('إنشاء حساب المدير', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildTextField(controller: adminUserCtrl, icon: Icons.person, label: 'اسم المستخدم'),
+            const SizedBox(height: 16),
+            _buildTextField(controller: adminPassCtrl, icon: Icons.lock, label: 'كلمة المرور', isPassword: true),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              if (adminUserCtrl.text.trim().isEmpty || adminPassCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء جميع الحقول'), backgroundColor: AppColors.error));
+                return;
+              }
+              final hash = BCrypt.hashpw(adminPassCtrl.text.trim(), BCrypt.gensalt());
+              await db.insertUserRaw({
+                'username': adminUserCtrl.text.trim(),
+                'password_hash': hash,
+                'full_name': 'المدير العام',
+                'role': 'admin',
+                'permissions': '["*"]',
+                'secure_permissions': '[]',
+                'has_biometric': 0,
+                'created_at': DateTime.now().toIso8601String(),
+              });
+              
+              if (context.mounted) {
+                Navigator.pop(ctx);
+                // تحديث حالة الشاشة والدخول المباشر
+                _usernameCtrl.text = adminUserCtrl.text.trim();
+                _passwordCtrl.text = adminPassCtrl.text.trim();
+                _login();
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.navy),
+            child: const Text('إنشاء ودخول', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

@@ -88,11 +88,7 @@ void main() async {
     }
   }
 
-  // الدخول المباشر كضيف إذا لم تكن هناك أي حسابات في النظام
-  if (users.isEmpty) {
-    isLoggedIn = true;
-    targetLoginUser = null;
-  }
+
 
   if (isLoggedIn && targetLoginUser != null) {
     final userMap = await db.getUserByUsername(targetLoginUser);
@@ -105,23 +101,6 @@ void main() async {
       CurrentUser.hasBiometric = initialUser.hasBiometric;
       CurrentUser.securePermissions = initialUser.securePermissions;
     }
-  } else if (isLoggedIn && targetLoginUser == null) {
-    // وضع الضيف بصلاحيات كاملة
-    initialUser = const UserModel(
-      id: null,
-      username: 'مستخدم محلي',
-      fullName: 'مستخدم محلي',
-      role: 'admin',
-      permissions: ['*'],
-      securePermissions: [],
-      hasBiometric: false,
-    );
-    CurrentUser.id = initialUser.id;
-    CurrentUser.username = initialUser.username;
-    CurrentUser.fullName = initialUser.fullName;
-    CurrentUser.role = initialUser.role;
-    CurrentUser.hasBiometric = initialUser.hasBiometric;
-    CurrentUser.securePermissions = initialUser.securePermissions;
   }
   runApp(
     ProviderScope(

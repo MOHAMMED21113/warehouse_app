@@ -29,9 +29,9 @@ class LifecycleManager extends WidgetsBindingObserver {
       // ✅ عند العودة للتطبيق
       if (CurrentUser.id != null && _pausedTime != null) {
 
-        // جلب الإعدادات لمعرفة المدة المسموحة
-        final settings = _ref.read(settingsProvider).valueOrNull;
-        final timeoutMinutes = settings?.sessionTimeoutMinutes ?? 0;
+        // جلب الإعدادات لمعرفة المدة المسموحة من SharedPreferences لتجنب تأخير AsyncValue
+        final prefs = _ref.read(sharedPreferencesProvider);
+        final timeoutMinutes = prefs.getInt('session_timeout_minutes') ?? -1;
 
         // حساب الوقت المنقضي منذ الخروج
         final difference = DateTime.now().difference(_pausedTime!);
